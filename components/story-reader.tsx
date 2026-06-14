@@ -1,18 +1,23 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Locale, Storypoint } from '@/lib/types';
+import { Locale, Storypoint, UserAccount } from '@/lib/types';
 import { getLocaleStorypoint, getMessages } from '@/lib/i18n';
 
 export function StoryReader({
   locale,
   storypoint,
+  currentUser,
+  isFavorite,
   backHref,
   onClose
 }: {
   locale: Locale;
   storypoint: Storypoint;
+  currentUser: UserAccount | null;
+  isFavorite: boolean;
   backHref: string;
   onClose?: () => void;
 }) {
@@ -21,6 +26,7 @@ export function StoryReader({
   const story = useMemo(() => getLocaleStorypoint(storypoint, locale), [locale, storypoint]);
   const [playing, setPlaying] = useState(false);
   const [fontSize, setFontSize] = useState(1);
+  const [favorite, setFavorite] = useState(isFavorite);
   const speechLocale = locale === 'ca' ? 'ca-ES' : locale === 'es' ? 'es-ES' : 'en-US';
 
   useEffect(() => {
@@ -32,6 +38,26 @@ export function StoryReader({
   useEffect(() => {
     document.documentElement.style.setProperty('--story-font-size', `${fontSize}rem`);
   }, [fontSize]);
+
+  useEffect(() => {
+    setFavorite(isFavorite);
+  }, [isFavorite]);
+
+  const toggleFavorite = async () => {
+    if (!currentUser) {
+      window.location.assign(`/${locale}/account?returnTo=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
+    const response = await fetch(`/api/favorites/${storypoint.id}`, { method: 'POST' });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = (await response.json()) as { favoriteStorypointIds: string[] };
+    setFavorite(payload.favoriteStorypointIds.includes(storypoint.id));
+  };
 
   const toggleSpeech = () => {
     if (playing) {
@@ -52,18 +78,38 @@ export function StoryReader({
   return (
     <section className="reader" aria-label={story.title}>
       <div className="story-actions">
-        <h1>{story.title}</h1>
-        <button
-          className="close-button"
-          type="button"
-          onClick={() => {
-            onClose?.();
-            router.push(backHref);
-          }}
-          aria-label={messages.close}
-        >
-          X
-        </button>
+        <div>
+          <h1>{story.title}</h1>
+{storypoint.submittedByUserName ? (
+             <p className="submitter-meta">
+               <span className="muted">{messages.requestOwner}</span>
+               {storypoint.submittedByProfileImageUrl ? (
+                 <img src={storypoint.submittedByProfileImageUrl} alt={storypoint.submittedByUserName} />
+               ) : null}
+               {storypoint.submittedByUserId ? (
+                 <Link href={`/${locale}/users/${storypoint.submittedByUserId}`}>{storypoint.submittedByUserName}</Link>
+               ) : (
+                 <span>{storypoint.submittedByUserName}</span>
+               )}
+             </p>
+           ) : null}
+        </div>
+        <div className="popup-controls">
+          <button className={`icon-button ${favorite ? 'favorite-active' : ''}`} type="button" onClick={() => void toggleFavorite()} aria-label={favorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
+            {favorite ? '♥' : '♡'}
+          </button>
+          <button
+            className="close-button"
+            type="button"
+            onClick={() => {
+              onClose?.();
+              router.push(backHref);
+            }}
+            aria-label={messages.close}
+          >
+            X
+          </button>
+        </div>
       </div>
       <div className="reader-toolbar" style={{ margin: '14px 0 18px' }}>
         <button className="pill" type="button" onClick={() => setFontSize((value) => Math.max(0.85, value - 0.1))}>

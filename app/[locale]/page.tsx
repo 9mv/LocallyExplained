@@ -3,16 +3,21 @@ import { HomeClient } from '@/components/home-client';
 import { SiteHeader } from '@/components/site-header';
 import { isLocale } from '@/lib/i18n';
 import { listStorypoints } from '@/lib/store';
+import { getCurrentUser } from '@/lib/session';
 
-export default function HomePage({ params }: { params: { locale: string } }) {
-  if (!isLocale(params.locale)) {
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  if (!isLocale(locale)) {
     notFound();
   }
 
+  const currentUser = await getCurrentUser();
+
   return (
     <div className="app-shell">
-      <SiteHeader locale={params.locale} />
-      <HomeClient locale={params.locale} storypoints={listStorypoints()} />
+      <SiteHeader locale={locale} currentUser={currentUser} />
+      <HomeClient locale={locale} storypoints={listStorypoints()} currentUser={currentUser} />
     </div>
   );
 }

@@ -1,0 +1,84 @@
+{
+  "users": [
+    {
+      "id": "admin-user",
+      "email": "admin@locally-explained.local",
+      "name": "Admin",
+      "passwordSalt": "82ea8425f41413d59d69a970900277eb",
+      "passwordHash": "4c95dcc678be8d94c4f1529687a4d2e449c8b8c04399cd04ea17d5662c2587f6ab2b9e83b071366297dd13a6074778b6f76ad346e5627f0a86f81840dec06857",
+      "profileImageUrl": "",
+      "favoriteStorypointIds": [],
+      "role": "admin",
+      "createdAt": "2026-06-14T07:00:00.000Z",
+      "updatedAt": "2026-06-14T07:00:00.000Z"
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "email": "user1@example.com",
+      "name": "user1",
+      "passwordSalt": "48dbd832ca9344d274d7c2294d645f76",
+      "passwordHash": "0106c61605f5068878b86ec9fadb41691219cb464e56ff08863541fc63d7db46ceabd5a116c9e22529d06c8f1f7abf55552d72feb3208096856d45ae602b0ea2",
+      "profileImageUrl": "",
+      "favoriteStorypointIds": [],
+      "role": "user",
+      "createdAt": "2026-06-14T07:36:59.300Z",
+      "updatedAt": "2026-06-14T07:36:59.300Z"
+    }
+  ],
+  "sessions": [
+    {
+      "tokenHash": "c5a4f9765c2998083ad9c8fedc183f8f2f0a7aad365d8bc1cb4a9bc968b218df",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-14T09:39:11.650Z"
+    }
+  ],
+  "storypoints": [
+    {
+      "id": "sheltered-bay",
+      "slug": "sheltered-bay",
+      "locationName": "Sheltered Bay",
+      "lat": 39.9376,
+      "lng": 3.9624,
+      "originalLocale": "ca",
+      "submittedByUserName": "LocallyExplained Team",
+      "translations": {
+        "ca": {
+          "title": "Una cala protegida",
+          "body": "Aquesta cala és un bon exemple de com la costa pot crear espais tranquils i accessibles. Les seves formes naturals han condicionat l’ús del lloc i la manera com els visitants s’hi apropen."
+        },
+        "es": {
+          "title": "Una cala protegida",
+          "body": "Esta cala es un buen ejemplo de cómo la costa puede crear espacios tranquilos y accesibles. Sus formas naturales han condicionado el uso del lugar y la manera en que los visitantes se acercan a él."
+        },
+        "en": {
+          "title": "A sheltered bay",
+          "body": "This bay is a good example of how the coastline can create calm and accessible spaces. Its natural shapes have shaped the way people use the place and approach it as visitors."
+        }
+      }
+    },
+    {
+      "id": "natural-harbour",
+      "slug": "natural-harbour",
+      "locationName": "Natural Harbour",
+      "lat": 39.8894,
+      "lng": 4.2631,
+      "originalLocale": "ca",
+      "submittedByUserName": "LocallyExplained Team",
+      "translations": {
+        "ca": {
+          "title": "Un port natural",
+          "body": "Aquest port natural ha estat un punt estratègic per al comerç, la navegació i la vida urbana. La seva grandària i protecció l’han convertit en un lloc clau durant segles."
+        },
+        "es": {
+          "title": "Un puerto natural",
+          "body": "Este puerto natural ha sido un punto estratégico para el comercio, la navegación y la vida urbana. Su tamaño y protección lo han convertido en un lugar clave durante siglos."
+        },
+        "en": {
+          "title": "A natural harbour",
+          "body": "This natural harbour has been a strategic point for trade, navigation, and urban life. Its size and protection have made it an important place for centuries."
+        }
+      }
+    }
+  ],
+  "requests": []
+}

@@ -5,9 +5,9 @@ import { useEffect, useRef } from 'react';
 import { buildGeodesicCircle } from '@/lib/circle';
 import { Storypoint } from '@/lib/types';
 
-const menorcaCenter: [number, number] = [4.228, 39.9496];
+const defaultMapCenter: [number, number] = [0, 20];
 
-const mapStyle = {
+const mapStyle: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
     osm: {
@@ -24,7 +24,7 @@ const mapStyle = {
       source: 'osm'
     }
   ]
-} as const;
+};
 
 type Props = {
   storypoints: Storypoint[];
@@ -33,6 +33,7 @@ type Props = {
   requestMode: boolean;
   onMapPick: (point: { lng: number; lat: number }) => void;
   userLocation: { lat: number; lng: number } | null;
+  pendingPoint: { lat: number; lng: number } | null;
 };
 
 export function MapView({
@@ -41,7 +42,8 @@ export function MapView({
   onSelectStorypoint,
   requestMode,
   onMapPick,
-  userLocation
+  userLocation,
+  pendingPoint
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -64,7 +66,7 @@ export function MapView({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: mapStyle,
-      center: userLocation ? [userLocation.lng, userLocation.lat] : menorcaCenter,
+      center: userLocation ? [userLocation.lng, userLocation.lat] : defaultMapCenter,
       zoom: userLocation ? 11.5 : 10.3
     });
 
@@ -123,6 +125,28 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
 
+    if (!map || !pendingPoint) {
+      return;
+    }
+
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'request-marker-dot';
+    element.setAttribute('aria-label', 'Selected request location');
+    element.textContent = '+';
+
+    const marker = new maplibregl.Marker({ element })
+      .setLngLat([pendingPoint.lng, pendingPoint.lat])
+      .addTo(map);
+
+    return () => {
+      marker.remove();
+    };
+  }, [pendingPoint]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+
     if (!map || !userLocation) {
       return;
     }
@@ -174,14 +198,6 @@ export function MapView({
     return (
     <div className="map-shell">
       <div className={`map-frame ${requestMode ? 'request-highlight' : ''}`} ref={containerRef} />
-      <div className="floating-controls">
-        <div className="floating-stack">
-          <div className="pill map-hint">
-            <strong>Storypoints</strong>
-            <span className="muted">{requestMode ? 'Click on the map to pick the exact location.' : 'Explore the pins or request a new storypoint.'}</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

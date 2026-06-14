@@ -5,6 +5,21 @@ export type StoryTranslation = {
   body: string;
 };
 
+export type UserRole = 'user' | 'admin';
+
+export type UserAccount = {
+  id: string;
+  email: string;
+  name: string;
+  passwordSalt: string;
+  passwordHash: string;
+  profileImageUrl: string;
+  favoriteStorypointIds: string[];
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Storypoint = {
   id: string;
   slug: string;
@@ -12,6 +27,10 @@ export type Storypoint = {
   lat: number;
   lng: number;
   originalLocale: Locale;
+  submittedByUserId?: string;
+  submittedByUserName?: string;
+  submittedByEmail?: string;
+  submittedByProfileImageUrl?: string;
   translations: Record<Locale, StoryTranslation>;
 };
 
@@ -20,6 +39,9 @@ export type StorypointRequest = {
   title: string;
   body: string;
   email: string;
+  submittedByUserId?: string;
+  submittedByUserName?: string;
+  submittedByProfileImageUrl?: string;
   locale: Locale;
   lat: number;
   lng: number;
@@ -43,18 +65,57 @@ export type Messages = {
   tts: string;
   largerText: string;
   smallerText: string;
-  askLocation: string;
-  allowLocation: string;
-  useDefault: string;
+  useLocation: string;
+  locationDenied: string;
+  requestSubmitted: string;
   requestFormTitle: string;
   requestFormEmail: string;
   requestFormStory: string;
   submitRequest: string;
+  password: string;
+  signInToContinue: string;
+  requestFollowUp: string;
+  accountTitle: string;
+  signIn: string;
+  signUp: string;
+  signOut: string;
+  register: string;
+  confirmPassword: string;
+  name: string;
+  profileImage: string;
+  saveAccount: string;
+  currentPassword: string;
+  newPassword: string;
+  invalidCredentials: string;
+  emailAlreadyInUse: string;
+  accountSettings: string;
+  myRequests: string;
+  favorites: string;
+  myStorypoints: string;
+  noRequests: string;
+  noFavorites: string;
+  noStorypoints: string;
+  requestOwner: string;
+  viewProfile: string;
+  favoriteStorypoint: string;
+  unfavoriteStorypoint: string;
+  loginToFavorite: string;
+  loginToRequest: string;
+  signInRequired: string;
+  profileTitle: string;
+  profileStorypoints: string;
+  profileSubtitle: string;
+  adminStorypoints: string;
+  deleteStorypoint: string;
+  delete: string;
+  accepted: string;
+  rejected: string;
+  requestAccepted: string;
+  requestRejected: string;
   donationsTitle: string;
   whoWeAreTitle: string;
   adminTitle: string;
   adminLogin: string;
-  password: string;
   login: string;
   approve: string;
   reject: string;

@@ -1,17 +1,21 @@
 import { SiteHeader } from '@/components/site-header';
 import { getMessages, isLocale } from '@/lib/i18n';
+import { getCurrentUser } from '@/lib/session';
 import { notFound } from 'next/navigation';
 
-export default function WhoWeArePage({ params }: { params: { locale: string } }) {
-  if (!isLocale(params.locale)) {
+export default async function WhoWeArePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  if (!isLocale(locale)) {
     notFound();
   }
 
-  const messages = getMessages(params.locale);
+  const messages = getMessages(locale);
+  const currentUser = await getCurrentUser();
 
   return (
     <div className="app-shell">
-      <SiteHeader locale={params.locale} />
+      <SiteHeader locale={locale} currentUser={currentUser} />
       <main className="container page-grid">
         <section className="panel">
           <h1>{messages.whoWeAreTitle}</h1>

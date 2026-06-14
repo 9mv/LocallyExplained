@@ -1,28 +1,42 @@
-import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
-import { adminCookieName, isAdminTokenValid } from '@/lib/auth';
 import { getMessages, isLocale } from '@/lib/i18n';
-import { listRequests } from '@/lib/store';
+import { listRequests, listStorypoints } from '@/lib/store';
 import { AdminDashboard } from '@/components/admin-dashboard';
-import { AdminLogin } from '@/components/admin-login';
+import { AccountCenter } from '@/components/account-center';
+import { getCurrentUser } from '@/lib/session';
 
-export default function AdminPage({ params }: { params: { locale: string } }) {
-  if (!isLocale(params.locale)) {
+export default async function AdminPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  if (!isLocale(locale)) {
     notFound();
   }
 
-  const messages = getMessages(params.locale);
-  const token = cookies().get(adminCookieName())?.value;
-  const authenticated = isAdminTokenValid(token);
+  const messages = getMessages(locale);
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="app-shell">
+        <SiteHeader locale={locale} currentUser={currentUser} />
+        <main className="container page-grid">
+          <section className="panel">
+            <h1>{messages.adminTitle}</h1>
+            <AccountCenter locale={locale} currentUser={currentUser} requests={[]} favorites={[]} storypoints={[]} />
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
-      <SiteHeader locale={params.locale} />
+      <SiteHeader locale={locale} currentUser={currentUser} />
       <main className="container page-grid">
         <section className="panel">
           <h1>{messages.adminTitle}</h1>
-          {authenticated ? <AdminDashboard locale={params.locale} requests={listRequests()} /> : <AdminLogin locale={params.locale} />}
+          <AdminDashboard locale={locale} requests={listRequests()} storypoints={listStorypoints()} />
         </section>
       </main>
     </div>

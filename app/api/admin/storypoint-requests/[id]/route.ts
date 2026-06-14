@@ -3,7 +3,8 @@ import { adminCookieName, isAdminTokenValid } from '@/lib/auth';
 import { sendModerationEmail } from '@/lib/email';
 import { reviewStorypointRequest } from '@/lib/store';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const token = request.headers.get('cookie')?.match(new RegExp(`${adminCookieName()}=([^;]+)`))?.[1];
 
   if (!isAdminTokenValid(token)) {
@@ -12,7 +13,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const body = await request.json();
   const decision = body?.decision === 'approved' ? 'approved' : 'rejected';
-  const result = reviewStorypointRequest(params.id, decision);
+  const result = reviewStorypointRequest(id, decision);
 
   if (!result) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

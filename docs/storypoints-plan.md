@@ -6,7 +6,7 @@ LocallyExplained is a multilingual web application for city and location visitor
 
 Visitors can:
 
-- Explore a map centered by default on Menorca.
+- Explore a map that starts with a neutral default view.
 - Click Storypoint pins.
 - Open a mini popup with the Storypoint title and a **Play** button.
 - Open the full Storypoint reader.
@@ -530,15 +530,15 @@ POST /api/admin/storypoint-requests/[id]
 
 ### 7.1 First visit and default location
 
-The home page defaults to Menorca.
+The home page starts with a neutral default map view.
 
-On first visit, the browser asks whether the user wants to use their location. If the user allows location access:
+On first visit, the browser does not automatically ask for location access. If the user presses the location button and allows location access:
 
 - The map centers on the user's position.
 - A 3 km radius circle is drawn around the user.
 - The location is saved in `localStorage`.
 
-If the user refuses location access or wants the default view, the map stays centered on Menorca.
+If the user refuses location access or wants the default view, the map stays on the neutral default view.
 
 ### 7.2 Storypoints
 
@@ -552,7 +552,7 @@ A Storypoint contains:
 - Original locale
 - Translations for Catalan, Spanish, and English
 
-The current seed data includes sample Storypoints in Menorca.
+The current seed data includes generic sample Storypoints.
 
 ### 7.3 Map pins
 
