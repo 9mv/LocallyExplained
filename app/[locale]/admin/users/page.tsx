@@ -1,13 +1,11 @@
 import { notFound } from 'next/navigation';
 import { SiteHeader } from '@/components/site-header';
 import { getMessages, isLocale } from '@/lib/i18n';
-import { listRequests, listStorypoints } from '@/lib/store';
-import { AdminDashboard } from '@/components/admin-dashboard';
-import { AccountCenter } from '@/components/account-center';
+import { listUsers } from '@/lib/store';
 import { getCurrentUser } from '@/lib/session';
-import Link from 'next/link';
+import { AdminUsersPanel } from '@/components/admin-users-panel';
 
-export default async function AdminPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function AdminUsersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
 
   if (!isLocale(locale)) {
@@ -24,12 +22,22 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
         <main className="container page-grid">
           <section className="panel">
             <h1>{messages.adminTitle}</h1>
-            <AccountCenter locale={locale} currentUser={currentUser} requests={[]} favorites={[]} storypoints={[]} />
+            <p>{messages.adminLogin}</p>
           </section>
         </main>
       </div>
     );
   }
+
+  const users = listUsers().map((u) => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    profileImageUrl: u.profileImageUrl,
+    role: u.role,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt
+  }));
 
   return (
     <div className="app-shell">
@@ -37,15 +45,7 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
       <main className="container page-grid">
         <section className="panel">
           <h1>{messages.adminTitle}</h1>
-          <div className="content-actions" style={{ marginBottom: 16 }}>
-            <Link className="ghost-button" href={`/${locale}/admin`}>
-              Overview
-            </Link>
-            <Link className="ghost-button" href={`/${locale}/admin/users`}>
-              Users
-            </Link>
-          </div>
-          <AdminDashboard locale={locale} requests={listRequests()} storypoints={listStorypoints()} />
+          <AdminUsersPanel locale={locale} users={users} />
         </section>
       </main>
     </div>

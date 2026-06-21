@@ -503,3 +503,104 @@ export function deleteStorypoint(id: string) {
 
   return true;
 }
+
+export function deleteUserStorypointRequest(requestId: string, userId: string) {
+  const store = getStore();
+  const request = store.requests.find((r) => r.id === requestId);
+  if (!request) {
+    return false;
+  }
+
+  // Users can only delete their own submitted requests.
+  if (request.submittedByUserId !== userId) {
+    return false;
+  }
+
+  store.requests = store.requests.filter((r) => r.id !== requestId);
+  persistStore();
+  return true;
+}
+
+export function deleteUserFavoriteStorypoint(storypointId: string, userId: string) {
+  const store = getStore();
+  const user = store.users.find((u) => u.id === userId);
+  if (!user) {
+    return false;
+  }
+
+  if (!user.favoriteStorypointIds.includes(storypointId)) {
+    return false;
+  }
+
+  user.favoriteStorypointIds = user.favoriteStorypointIds.filter((id) => id !== storypointId);
+  user.updatedAt = new Date().toISOString();
+  persistStore();
+  return true;
+}
+
+export function deleteUserStorypoint(storypointId: string, userId: string) {
+  const store = getStore();
+  const storypoint = store.storypoints.find((sp) => sp.id === storypointId);
+  if (!storypoint) {
+    return false;
+  }
+
+  if (storypoint.submittedByUserId !== userId) {
+    return false;
+  }
+
+  store.storypoints = store.storypoints.filter((sp) => sp.id !== storypointId);
+  store.users.forEach((user) => {
+    user.favoriteStorypointIds = user.favoriteStorypointIds.filter((id) => id !== storypointId);
+  });
+  persistStore();
+  return true;
+}
+
+export function deleteUserAccount(userId: string) {
+  const store = getStore();
+  const exists = store.users.some((user) => user.id === userId);
+
+  if (!exists) {
+    return false;
+  }
+
+  const isAdmin = store.users.find((user) => user.id === userId)?.role === 'admin';
+
+  // Safety: keep at least one admin in the system.
+  if (isAdmin) {
+    const adminsLeft = store.users.filter((u) => u.role === 'admin' && u.id !== userId).length;
+    if (adminsLeft === 0) {
+      return false;
+    }
+  }
+
+  // Remove storypoints favorites and any user-linked fields.
+  store.storypoints.forEach((storypoint) => {
+    if (storypoint.submittedByUserId === userId) {
+      storypoint.submittedByUserId = undefined;
+      storypoint.submittedByUserName = undefined;
+    }
+  });
+
+  store.users.forEach((user) => {
+    user.favoriteStorypointIds = user.favoriteStorypointIds.filter((storypointId) => {
+      // Keep favorites unless storypoint got deleted elsewhere.
+      return store.storypoints.some((storypoint) => storypoint.id === storypointId);
+    });
+  });
+
+  // Reassign request submitter (if any) to keep history, but keep email/name.
+  store.requests.forEach((request) => {
+    if (request.submittedByUserId === userId) {
+      request.submittedByUserId = undefined;
+      request.submittedByUserName = undefined;
+    }
+  });
+
+  store.sessions = store.sessions.filter((session) => session.userId !== userId);
+  store.users = store.users.filter((user) => user.id !== userId);
+  persistStore();
+
+  return true;
+}

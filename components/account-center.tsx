@@ -33,7 +33,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const profileRequests = useMemo(() => requests, [requests]);
+  const profileRequests = useMemo(() => requests.filter((request) => request.status === 'pending'), [requests]);
   const profileStorypoints = useMemo(() => storypoints, [storypoints]);
 
   const redirectAfterAuth = () => {
@@ -343,12 +343,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
         <article className="panel">
           <h2>{messages.myRequests}</h2>
           <div className="list">
-            {profileRequests.length === 0 ? <p className="muted">{messages.noRequests}</p> : null}
+            {profileRequests.length === 0 ? <p className="muted">{messages.noPendingRequests}</p> : null}
             {profileRequests.map((request) => (
               <div className="list-item" key={request.id}>
                 <strong>{request.title}</strong>
                 <p>{request.body}</p>
-                <p className="muted">{request.status}</p>
               </div>
             ))}
           </div>

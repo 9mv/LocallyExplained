@@ -1,6 +1,20 @@
 {
   "users": [
     {
+      "id": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "email": "xaleixbyx@gmail.com",
+      "name": "xaleixbyx",
+      "passwordSalt": "3361371063d9160ea16e63836ac2957e",
+      "passwordHash": "dc241c930bea7bdbb9186732102577b755daa314042f8d3cabc47348e9cfdb75b612ab6cf70e4f90af4042323009ae1469f4bc45222185db29571af16821543a",
+      "profileImageUrl": "",
+      "favoriteStorypointIds": [],
+      "role": "user",
+      "createdAt": "2026-06-21T15:44:15.574Z",
+      "updatedAt": "2026-06-21T15:44:15.574Z",
+      "recoveryCode": "803866",
+      "recoveryCodeExpiresAt": 1782062306639
+    },
+    {
       "id": "admin-user",
       "email": "admin@locally-explained.local",
       "name": "Admin",
@@ -30,6 +44,31 @@
   ],
   "sessions": [
     {
+      "tokenHash": "34c57636531961d29051669e5c3b054bd49ae1f966450d8e915722f97525fa72",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-21T15:46:11.951Z"
+    },
+    {
+      "tokenHash": "6f1299e3e314851ef49a01b8df5c961eabfd0879019cadf22d1fc4692c0364d2",
+      "userId": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "expiresAt": "2026-07-21T15:45:22.521Z"
+    },
+    {
+      "tokenHash": "bf5c8cc0d3402ab377cc22ab331fc793d32f8d646e57d430bdd90ee57fd5f252",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-21T15:44:40.791Z"
+    },
+    {
+      "tokenHash": "5c20565cbd3404754eebfe9f3e488517990f8cdee69e8cd5ecd52bf2be025121",
+      "userId": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "expiresAt": "2026-07-21T15:44:15.931Z"
+    },
+    {
+      "tokenHash": "92a9a54524c8537284af57d62aa692652ce95bcee3133b4275a259c4d00de7e5",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-21T15:39:05.110Z"
+    },
+    {
       "tokenHash": "336a08983dcec310fc8c237f4e2821261e741e01d5fb449129a1ddd82cefac83",
       "userId": "admin-user",
       "expiresAt": "2026-07-14T16:54:52.088Z"
@@ -51,6 +90,32 @@
     }
   ],
   "storypoints": [
+    {
+      "id": "3e54ce38-2f45-41b8-abec-db1ce1c904f3",
+      "slug": "test",
+      "locationName": "test",
+      "lat": 41.47963656358064,
+      "lng": 2.085918261109498,
+      "originalLocale": "ca",
+      "submittedByUserId": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "submittedByUserName": "xaleixbyx",
+      "submittedByEmail": "xaleixbyx@gmail.com",
+      "submittedByProfileImageUrl": "",
+      "translations": {
+        "ca": {
+          "title": "test",
+          "body": "test again"
+        },
+        "es": {
+          "title": "test",
+          "body": "test again"
+        },
+        "en": {
+          "title": "test",
+          "body": "test again"
+        }
+      }
+    },
     {
       "id": "3cab929d-4456-4449-a300-cbfe61943c4b",
       "slug": "admin-admin",
@@ -176,6 +241,21 @@
   ],
   "requests": [
     {
+      "id": "069a6ed1-cf5f-4256-a992-24aabcbe0da6",
+      "title": "test",
+      "body": "test again",
+      "email": "xaleixbyx@gmail.com",
+      "locale": "ca",
+      "lat": 41.47963656358064,
+      "lng": 2.085918261109498,
+      "submittedByUserId": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "submittedByUserName": "xaleixbyx",
+      "submittedByProfileImageUrl": "",
+      "status": "approved",
+      "createdAt": "2026-06-21T15:45:33.787Z",
+      "reviewedAt": "2026-06-21T15:46:55.519Z"
+    },
+    {
       "id": "af97eabf-0265-473c-b95e-46879b663a58",
       "title": "ADMIN ADMIN",
       "body": "what is happening?",
@@ -212,7 +292,9 @@
       "lng": 1.5918236717381546,
       "status": "rejected",
       "createdAt": "2026-06-14T16:32:02.130Z",
-      "reviewedAt": "2026-06-14T16:53:28.630Z"
+      "reviewedAt": "2026-06-14T16:53:28.630Z",
+      "submittedByUserId": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
+      "submittedByUserName": "xaleixbyx"
     },
     {
       "id": "07418387-9c82-4e31-bb2d-cedce65b97d8",

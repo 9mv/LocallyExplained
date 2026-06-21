@@ -95,6 +95,7 @@ export type Messages = {
   favorites: string;
   myStorypoints: string;
   noRequests: string;
+  noPendingRequests: string;
   noFavorites: string;
   noStorypoints: string;
   requestOwner: string;
