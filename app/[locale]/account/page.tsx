@@ -14,6 +14,9 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
   }
 
   const currentUser = await getCurrentUser();
+  const [requests, favorites, storypoints] = currentUser
+    ? await Promise.all([listUserRequests(currentUser), listUserFavorites(currentUser), listUserStorypoints(currentUser)])
+    : [[], [], []];
 
   return (
     <div className="app-shell">
@@ -22,9 +25,9 @@ export default async function AccountPage({ params, searchParams }: { params: Pr
         <AccountCenter
           locale={locale}
           currentUser={currentUser}
-          requests={currentUser ? listUserRequests(currentUser) : []}
-          favorites={currentUser ? listUserFavorites(currentUser) : []}
-          storypoints={currentUser ? listUserStorypoints(currentUser) : []}
+          requests={requests}
+          favorites={favorites}
+          storypoints={storypoints}
           returnTo={returnTo}
         />
       </main>

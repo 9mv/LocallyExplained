@@ -16,6 +16,7 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
 
   const messages = getMessages(locale);
   const currentUser = await getCurrentUser();
+  const [requests, storypoints] = await Promise.all([listRequests(), listStorypoints()]);
 
   if (!currentUser || currentUser.role !== 'admin') {
     return (
@@ -45,7 +46,7 @@ export default async function AdminPage({ params }: { params: Promise<{ locale: 
               Users
             </Link>
           </div>
-          <AdminDashboard locale={locale} requests={listRequests()} storypoints={listStorypoints()} />
+          <AdminDashboard locale={locale} requests={requests} storypoints={storypoints} />
         </section>
       </main>
     </div>

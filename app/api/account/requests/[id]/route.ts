@@ -5,13 +5,13 @@ import { getUserBySessionToken, deleteUserStorypointRequest } from '@/lib/store'
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = request.headers.get('cookie')?.match(new RegExp(`${userCookieName()}=([^;]+)`))?.[1];
-  const user = getUserBySessionToken(token);
+  const user = await getUserBySessionToken(token);
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const deleted = deleteUserStorypointRequest(id, user.id);
+  const deleted = await deleteUserStorypointRequest(id, user.id);
   if (!deleted) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

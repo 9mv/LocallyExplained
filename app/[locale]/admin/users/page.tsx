@@ -29,7 +29,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
     );
   }
 
-  const users = listUsers().map((u) => ({
+  const users = (await listUsers()).map((u) => ({
     id: u.id,
     email: u.email,
     name: u.name,

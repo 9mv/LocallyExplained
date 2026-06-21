@@ -18,10 +18,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = createUserAccount({ email, password });
+    const user = await createUserAccount({ email, password });
     await sendWelcomeEmail(email, user.name);
     const response = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } }, { status: 201 });
-    response.cookies.set(userCookieName(), createSession(user.id), {
+    response.cookies.set(userCookieName(), await createSession(user.id), {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',

@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { access, mkdir, readFile, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { join } from 'path';
+import { neon } from '@neondatabase/serverless';
 import { hashSessionToken, hashUserPassword, verifyUserPassword, mintSessionToken } from './auth';
 import { Locale, Storypoint, StorypointRequest, UserAccount } from './types';
 
@@ -19,7 +20,8 @@ type Store = {
 
 const dbDir = join(process.cwd(), '.data');
 const dbPath = join(dbDir, 'locally-explained-db.json');
-const storeKey = Symbol.for('locally-explained.store');
+const remoteDatabaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL;
+const remoteSql = remoteDatabaseUrl ? neon(remoteDatabaseUrl) : null;
 
 const seedStorypoints: Storypoint[] = [
   {
@@ -86,10 +88,17 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function ensureDbDir() {
-  if (!existsSync(dbDir)) {
-    mkdirSync(dbDir, { recursive: true });
-  }
+async function ensureDbDir() {
+  await mkdir(dbDir, { recursive: true }).catch(() => undefined);
+}
+
+function normalizeStore(parsed: Partial<Store>): Store {
+  return {
+    users: parsed.users ?? [],
+    sessions: parsed.sessions ?? [],
+    storypoints: parsed.storypoints ?? [...seedStorypoints],
+    requests: parsed.requests ?? []
+  };
 }
 
 function defaultStore(): Store {
@@ -118,59 +127,84 @@ function defaultStore(): Store {
    };
 }
 
-function loadStore(): Store {
-  ensureDbDir();
+async function ensureRemoteSchema() {
+  if (!remoteSql) {
+    return;
+  }
 
-  if (!existsSync(dbPath)) {
+  await remoteSql`
+    CREATE TABLE IF NOT EXISTS locally_explained_state (
+      id integer PRIMARY KEY,
+      data jsonb NOT NULL
+    )
+  `;
+}
+
+async function loadStore(): Promise<Store> {
+  if (remoteSql) {
+    await ensureRemoteSchema();
+    const rows = await remoteSql`SELECT data FROM locally_explained_state WHERE id = 1`;
+
+    if (rows.length > 0) {
+      return normalizeStore(rows[0].data as Partial<Store>);
+    }
+
     const initial = defaultStore();
-    writeFileSync(dbPath, JSON.stringify(initial, null, 2));
+    await remoteSql`INSERT INTO locally_explained_state (id, data) VALUES (1, ${JSON.stringify(initial)}::jsonb)`;
     return initial;
   }
+
+  await ensureDbDir();
 
   try {
-    const parsed = JSON.parse(readFileSync(dbPath, 'utf8')) as Partial<Store>;
-
-    return {
-      users: parsed.users ?? [],
-      sessions: parsed.sessions ?? [],
-      storypoints: parsed.storypoints ?? [...seedStorypoints],
-      requests: parsed.requests ?? []
-    };
+    await access(dbPath);
+    const parsed = JSON.parse(await readFile(dbPath, 'utf8')) as Partial<Store>;
+    return normalizeStore(parsed);
   } catch {
     const initial = defaultStore();
-    writeFileSync(dbPath, JSON.stringify(initial, null, 2));
+    await writeFile(dbPath, JSON.stringify(initial, null, 2));
     return initial;
   }
 }
 
-function getStore() {
-  const globalForStore = globalThis as typeof globalThis & { [storeKey]?: Store };
+let storePromise: Promise<Store> | null = null;
 
-  if (!globalForStore[storeKey]) {
-    globalForStore[storeKey] = loadStore();
+async function getStore() {
+  if (!storePromise) {
+    storePromise = loadStore();
   }
 
-  return globalForStore[storeKey] as Store;
+  return storePromise;
 }
 
-function persistStore() {
-  ensureDbDir();
-  writeFileSync(dbPath, JSON.stringify(getStore(), null, 2));
+async function persistStore(store: Store) {
+  if (remoteSql) {
+    await ensureRemoteSchema();
+    await remoteSql`
+      INSERT INTO locally_explained_state (id, data)
+      VALUES (1, ${JSON.stringify(store)}::jsonb)
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+    `;
+    return;
+  }
+
+  await ensureDbDir();
+  await writeFile(dbPath, JSON.stringify(store, null, 2));
 }
 
-function purgeExpiredSessions() {
-  const store = getStore();
+async function purgeExpiredSessions() {
+  const store = await getStore();
   const now = Date.now();
   const before = store.sessions.length;
   store.sessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > now);
 
   if (store.sessions.length !== before) {
-    persistStore();
+    await persistStore(store);
   }
 }
 
-function claimContentForEmail(email: string, userId: string, userName: string) {
-  const store = getStore();
+async function claimContentForEmail(email: string, userId: string, userName: string) {
+  const store = await getStore();
   const normalized = normalizeEmail(email);
 
   let changed = false;
@@ -192,140 +226,140 @@ function claimContentForEmail(email: string, userId: string, userName: string) {
   });
 
   if (changed) {
-    persistStore();
+    await persistStore(store);
   }
 }
 
-export function listStorypoints() {
-  return getStore().storypoints;
+export async function listStorypoints() {
+  return (await getStore()).storypoints;
 }
 
-export function getStorypoint(id: string) {
-  return getStore().storypoints.find((storypoint) => storypoint.id === id);
+export async function getStorypoint(id: string) {
+  return (await getStore()).storypoints.find((storypoint) => storypoint.id === id);
 }
 
-export function listRequests() {
-  return getStore().requests;
+export async function listRequests() {
+  return (await getStore()).requests;
 }
 
-export function listUsers() {
-  return getStore().users;
+export async function listUsers() {
+  return (await getStore()).users;
 }
 
-export function getUserById(id: string) {
-  return getStore().users.find((user) => user.id === id);
+export async function getUserById(id: string) {
+  return (await getStore()).users.find((user) => user.id === id);
 }
 
-export function getUserByEmail(email: string) {
-  return getStore().users.find((user) => normalizeEmail(user.email) === normalizeEmail(email));
+export async function getUserByEmail(email: string) {
+  return (await getStore()).users.find((user) => normalizeEmail(user.email) === normalizeEmail(email));
 }
 
-export function listUserRequests(user: UserAccount) {
-  return getStore().requests.filter((request) => request.submittedByUserId === user.id || normalizeEmail(request.email) === normalizeEmail(user.email));
+export async function listUserRequests(user: UserAccount) {
+  return (await getStore()).requests.filter((request) => request.submittedByUserId === user.id || normalizeEmail(request.email) === normalizeEmail(user.email));
 }
 
-export function listUserStorypoints(user: UserAccount) {
-  return getStore().storypoints.filter(
+export async function listUserStorypoints(user: UserAccount) {
+  return (await getStore()).storypoints.filter(
     (storypoint) => storypoint.submittedByUserId === user.id || normalizeEmail(storypoint.submittedByEmail ?? '') === normalizeEmail(user.email)
   );
 }
 
-export function listUserFavorites(user: UserAccount) {
-  return getStore().storypoints.filter((storypoint) => user.favoriteStorypointIds.includes(storypoint.id));
+export async function listUserFavorites(user: UserAccount) {
+  return (await getStore()).storypoints.filter((storypoint) => user.favoriteStorypointIds.includes(storypoint.id));
 }
 
-export function createUserAccount(input: { email: string; password: string; name?: string; profileImageUrl?: string; role?: 'user' | 'admin' }) {
-   const store = getStore();
-   const email = normalizeEmail(input.email);
+export async function createUserAccount(input: { email: string; password: string; name?: string; profileImageUrl?: string; role?: 'user' | 'admin' }) {
+  const store = await getStore();
+  const email = normalizeEmail(input.email);
 
-   if (store.users.some((user) => normalizeEmail(user.email) === email)) {
-     throw new Error('Email already in use');
-   }
+  if (store.users.some((user) => normalizeEmail(user.email) === email)) {
+    throw new Error('Email already in use');
+  }
 
-   const password = hashUserPassword(input.password);
-   const now = new Date().toISOString();
-   const user: UserAccount = {
-     id: randomUUID(),
-     email,
-     name: input.name?.trim() || deriveDisplayName(email),
-     passwordSalt: password.salt,
-     passwordHash: password.hash,
-     profileImageUrl: input.profileImageUrl?.trim() || '',
-     favoriteStorypointIds: [],
-     role: input.role ?? 'user',
-     createdAt: now,
-     updatedAt: now
-   };
+  const password = hashUserPassword(input.password);
+  const now = new Date().toISOString();
+  const user: UserAccount = {
+    id: randomUUID(),
+    email,
+    name: input.name?.trim() || deriveDisplayName(email),
+    passwordSalt: password.salt,
+    passwordHash: password.hash,
+    profileImageUrl: input.profileImageUrl?.trim() || '',
+    favoriteStorypointIds: [],
+    role: input.role ?? 'user',
+    createdAt: now,
+    updatedAt: now
+  };
 
-   store.users.unshift(user);
-   claimContentForEmail(email, user.id, user.name);
-   persistStore();
-   return user;
+  store.users.unshift(user);
+  await claimContentForEmail(email, user.id, user.name);
+  await persistStore(store);
+  return user;
 }
 
-export function authenticateUser(email: string, password: string) {
-  const user = getUserByEmail(email);
+export async function authenticateUser(email: string, password: string) {
+  const user = await getUserByEmail(email);
 
   if (!user || !verifyUserPassword(password, user.passwordSalt, user.passwordHash)) {
     return null;
   }
 
-  claimContentForEmail(user.email, user.id, user.name);
+  await claimContentForEmail(user.email, user.id, user.name);
 
   return user;
 }
 
-export function updateUserAccount(
-   userId: string,
-   input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }
- ) {
-   const store = getStore();
-   const user = store.users.find((item) => item.id === userId);
+export async function updateUserAccount(
+  userId: string,
+  input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }
+) {
+  const store = await getStore();
+  const user = store.users.find((item) => item.id === userId);
 
-   if (!user) {
-     return null;
-   }
+  if (!user) {
+    return null;
+  }
 
-   if (input.email?.trim() && normalizeEmail(input.email) !== normalizeEmail(user.email)) {
-     const nextEmail = normalizeEmail(input.email);
+  if (input.email?.trim() && normalizeEmail(input.email) !== normalizeEmail(user.email)) {
+    const nextEmail = normalizeEmail(input.email);
 
-     if (store.users.some((item) => item.id !== user.id && normalizeEmail(item.email) === nextEmail)) {
-       throw new Error('Email already in use');
-     }
+    if (store.users.some((item) => item.id !== user.id && normalizeEmail(item.email) === nextEmail)) {
+      throw new Error('Email already in use');
+    }
 
-     user.email = nextEmail;
-   }
+    user.email = nextEmail;
+  }
 
-   if (input.name?.trim()) {
-     user.name = input.name.trim();
-   }
+  if (input.name?.trim()) {
+    user.name = input.name.trim();
+  }
 
-   if (typeof input.profileImageUrl === 'string') {
-     user.profileImageUrl = input.profileImageUrl.trim();
-   }
+  if (typeof input.profileImageUrl === 'string') {
+    user.profileImageUrl = input.profileImageUrl.trim();
+  }
 
-   if (input.newPassword) {
-     if (!input.currentPassword || !verifyUserPassword(input.currentPassword, user.passwordSalt, user.passwordHash)) {
-       throw new Error('Invalid current password');
-     }
+  if (input.newPassword) {
+    if (!input.currentPassword || !verifyUserPassword(input.currentPassword, user.passwordSalt, user.passwordHash)) {
+      throw new Error('Invalid current password');
+    }
 
-     if (input.newPassword.length < 8) {
-       throw new Error('Password too short');
-     }
+    if (input.newPassword.length < 8) {
+      throw new Error('Password too short');
+    }
 
-     const password = hashUserPassword(input.newPassword);
-     user.passwordSalt = password.salt;
-     user.passwordHash = password.hash;
-   }
+    const password = hashUserPassword(input.newPassword);
+    user.passwordSalt = password.salt;
+    user.passwordHash = password.hash;
+  }
 
-   user.updatedAt = new Date().toISOString();
-   persistStore();
+  user.updatedAt = new Date().toISOString();
+  await persistStore(store);
 
-   return user;
- }
+  return user;
+}
 
-export function updateUserPassword(userId: string, recoveryCode: string, expiresAt: number) {
-  const store = getStore();
+export async function updateUserPassword(userId: string, recoveryCode: string, expiresAt: number) {
+  const store = await getStore();
   const user = store.users.find((item) => item.id === userId);
 
   if (!user) {
@@ -334,14 +368,14 @@ export function updateUserPassword(userId: string, recoveryCode: string, expires
 
   user.recoveryCode = recoveryCode;
   user.recoveryCodeExpiresAt = expiresAt;
-  persistStore();
+  await persistStore(store);
 
   return user;
 }
 
-export function resetUserPassword(email: string, code: string, newPassword: string) {
-  const store = getStore();
-  const user = getUserByEmail(email);
+export async function resetUserPassword(email: string, code: string, newPassword: string) {
+  const store = await getStore();
+  const user = await getUserByEmail(email);
 
   if (!user || !user.recoveryCode || !user.recoveryCodeExpiresAt) {
     return null;
@@ -357,52 +391,52 @@ export function resetUserPassword(email: string, code: string, newPassword: stri
   delete user.recoveryCode;
   delete user.recoveryCodeExpiresAt;
   user.updatedAt = new Date().toISOString();
-  persistStore();
+  await persistStore(store);
 
   return user;
 }
 
-export function createSession(userId: string) {
-  const store = getStore();
+export async function createSession(userId: string) {
+  const store = await getStore();
   const token = mintSessionToken();
   store.sessions.unshift({
     tokenHash: hashSessionToken(token),
     userId,
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString()
   });
-  persistStore();
+  await persistStore(store);
   return token;
 }
 
-export function getUserBySessionToken(token: string | undefined | null) {
+export async function getUserBySessionToken(token: string | undefined | null) {
   if (!token) {
     return null;
   }
 
-  purgeExpiredSessions();
-  const store = getStore();
+  await purgeExpiredSessions();
+  const store = await getStore();
   const session = store.sessions.find((item) => item.tokenHash === hashSessionToken(token));
 
-  return session ? getUserById(session.userId) ?? null : null;
+  return session ? (await getUserById(session.userId)) ?? null : null;
 }
 
-export function revokeSession(token: string | undefined | null) {
+export async function revokeSession(token: string | undefined | null) {
   if (!token) {
     return;
   }
 
-  const store = getStore();
+  const store = await getStore();
   const tokenHash = hashSessionToken(token);
   const before = store.sessions.length;
   store.sessions = store.sessions.filter((session) => session.tokenHash !== tokenHash);
 
   if (store.sessions.length !== before) {
-    persistStore();
+    await persistStore(store);
   }
 }
 
-export function toggleFavoriteStorypoint(userId: string, storypointId: string) {
-  const store = getStore();
+export async function toggleFavoriteStorypoint(userId: string, storypointId: string) {
+  const store = await getStore();
   const user = store.users.find((item) => item.id === userId);
 
   if (!user) {
@@ -416,12 +450,12 @@ export function toggleFavoriteStorypoint(userId: string, storypointId: string) {
   }
 
   user.updatedAt = new Date().toISOString();
-  persistStore();
+  await persistStore(store);
 
   return user;
 }
 
-export function createStorypointRequest(input: {
+export async function createStorypointRequest(input: {
   title: string;
   body: string;
   email: string;
@@ -432,6 +466,7 @@ export function createStorypointRequest(input: {
   submittedByUserName?: string;
   submittedByProfileImageUrl?: string;
 }) {
+  const store = await getStore();
   const request: StorypointRequest = {
     id: randomUUID(),
     ...input,
@@ -439,14 +474,14 @@ export function createStorypointRequest(input: {
     createdAt: new Date().toISOString()
   };
 
-  getStore().requests.unshift(request);
-  persistStore();
+  store.requests.unshift(request);
+  await persistStore(store);
 
   return request;
 }
 
-export function reviewStorypointRequest(id: string, decision: 'approved' | 'rejected', reviewerNote?: string) {
-  const store = getStore();
+export async function reviewStorypointRequest(id: string, decision: 'approved' | 'rejected', reviewerNote?: string) {
+  const store = await getStore();
   const request = store.requests.find((item) => item.id === id);
 
   if (!request) {
@@ -483,12 +518,12 @@ export function reviewStorypointRequest(id: string, decision: 'approved' | 'reje
     });
   }
 
-  persistStore();
+  await persistStore(store);
   return request;
 }
 
-export function deleteStorypoint(id: string) {
-  const store = getStore();
+export async function deleteStorypoint(id: string) {
+  const store = await getStore();
   const exists = store.storypoints.some((storypoint) => storypoint.id === id);
 
   if (!exists) {
@@ -499,13 +534,13 @@ export function deleteStorypoint(id: string) {
   store.users.forEach((user) => {
     user.favoriteStorypointIds = user.favoriteStorypointIds.filter((storypointId) => storypointId !== id);
   });
-  persistStore();
+  await persistStore(store);
 
   return true;
 }
 
-export function deleteUserStorypointRequest(requestId: string, userId: string) {
-  const store = getStore();
+export async function deleteUserStorypointRequest(requestId: string, userId: string) {
+  const store = await getStore();
   const request = store.requests.find((r) => r.id === requestId);
   if (!request) {
     return false;
@@ -517,12 +552,12 @@ export function deleteUserStorypointRequest(requestId: string, userId: string) {
   }
 
   store.requests = store.requests.filter((r) => r.id !== requestId);
-  persistStore();
+  await persistStore(store);
   return true;
 }
 
-export function deleteUserFavoriteStorypoint(storypointId: string, userId: string) {
-  const store = getStore();
+export async function deleteUserFavoriteStorypoint(storypointId: string, userId: string) {
+  const store = await getStore();
   const user = store.users.find((u) => u.id === userId);
   if (!user) {
     return false;
@@ -534,12 +569,12 @@ export function deleteUserFavoriteStorypoint(storypointId: string, userId: strin
 
   user.favoriteStorypointIds = user.favoriteStorypointIds.filter((id) => id !== storypointId);
   user.updatedAt = new Date().toISOString();
-  persistStore();
+  await persistStore(store);
   return true;
 }
 
-export function deleteUserStorypoint(storypointId: string, userId: string) {
-  const store = getStore();
+export async function deleteUserStorypoint(storypointId: string, userId: string) {
+  const store = await getStore();
   const storypoint = store.storypoints.find((sp) => sp.id === storypointId);
   if (!storypoint) {
     return false;
@@ -553,12 +588,12 @@ export function deleteUserStorypoint(storypointId: string, userId: string) {
   store.users.forEach((user) => {
     user.favoriteStorypointIds = user.favoriteStorypointIds.filter((id) => id !== storypointId);
   });
-  persistStore();
+  await persistStore(store);
   return true;
 }
 
-export function deleteUserAccount(userId: string) {
-  const store = getStore();
+export async function deleteUserAccount(userId: string) {
+  const store = await getStore();
   const exists = store.users.some((user) => user.id === userId);
 
   if (!exists) {
@@ -600,7 +635,7 @@ export function deleteUserAccount(userId: string) {
 
   store.sessions = store.sessions.filter((session) => session.userId !== userId);
   store.users = store.users.filter((user) => user.id !== userId);
-  persistStore();
+  await persistStore(store);
 
   return true;
 }

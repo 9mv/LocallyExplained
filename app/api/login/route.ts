@@ -6,14 +6,14 @@ export async function POST(request: Request) {
   const body = await request.json();
   const email = String(body.email ?? '');
   const password = String(body.password ?? '');
-  const user = authenticateUser(email, password);
+  const user = await authenticateUser(email, password);
 
   if (!user) {
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
   const response = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
-  response.cookies.set(userCookieName(), createSession(user.id), {
+  response.cookies.set(userCookieName(), await createSession(user.id), {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',

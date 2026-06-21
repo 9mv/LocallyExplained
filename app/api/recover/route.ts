@@ -14,14 +14,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email required' }, { status: 400 });
   }
 
-  const user = getUserByEmail(email);
+  const user = await getUserByEmail(email);
 
   const recoveryCode = String(randomInt(100000, 999999));
   const expiresAt = Date.now() + 60 * 60 * 1000;
 
   if (!code) {
     if (user) {
-      updateUserPassword(user.id, recoveryCode, expiresAt);
+      await updateUserPassword(user.id, recoveryCode, expiresAt);
       await sendRecoveryEmail(email, recoveryCode);
     }
     return NextResponse.json({ message: 'If the email exists, a recovery code has been sent.' });
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 });
   }
 
-  resetUserPassword(email, code, newPassword);
+  await resetUserPassword(email, code, newPassword);
 
   return NextResponse.json({ message: 'Password reset successfully' });
 }

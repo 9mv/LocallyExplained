@@ -13,14 +13,14 @@ export default async function UserProfilePage({ params }: { params: Promise<{ lo
   }
 
   const currentUser = await getCurrentUser();
-  const user = getUserById(id);
+  const user = await getUserById(id);
 
   if (!user) {
     notFound();
   }
 
   const messages = getMessages(locale);
-  const storypoints = listUserStorypoints(user);
+  const storypoints = await listUserStorypoints(user);
 
   return (
     <div className="app-shell">

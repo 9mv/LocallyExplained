@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:seed": "node --env-file=.env scripts/seed-db.mjs"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "maplibre-gl": "^5.5.0",
     "next": "^15.3.3",
     "react": "^19.1.0",

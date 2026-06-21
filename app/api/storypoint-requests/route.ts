@@ -7,7 +7,7 @@ import { sendRequestSubmissionEmail } from '@/lib/email';
 export async function POST(request: Request) {
   const body = await request.json();
   const token = request.headers.get('cookie')?.match(new RegExp(`${userCookieName()}=([^;]+)`))?.[1];
-  const currentUser = getUserBySessionToken(token);
+  const currentUser = await getUserBySessionToken(token);
 
   if (!body?.title || !body?.body) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
-  const created = createStorypointRequest({
+  const created = await createStorypointRequest({
     title: String(body.title),
     body: String(body.body),
     email,

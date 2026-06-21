@@ -8,7 +8,7 @@ function getToken(request: Request) {
 
 export async function PATCH(request: Request) {
   const token = getToken(request);
-  const currentUser = getUserBySessionToken(token);
+  const currentUser = await getUserBySessionToken(token);
 
   if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +17,7 @@ export async function PATCH(request: Request) {
   const body = await request.json();
 
   try {
-    const updated = updateUserAccount(currentUser.id, {
+    const updated = await updateUserAccount(currentUser.id, {
       email: typeof body.email === 'string' ? String(body.email) : undefined,
       name: typeof body.name === 'string' ? String(body.name) : undefined,
       profileImageUrl: typeof body.profileImageUrl === 'string' ? String(body.profileImageUrl) : undefined,

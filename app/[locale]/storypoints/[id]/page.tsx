@@ -12,7 +12,7 @@ export default async function StorypointPage({ params }: { params: Promise<{ loc
     notFound();
   }
 
-  const storypoint = getStorypoint(id);
+  const storypoint = await getStorypoint(id);
   const currentUser = await getCurrentUser();
 
   if (!storypoint) {

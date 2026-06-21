@@ -14,10 +14,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   const currentUser = await getCurrentUser();
 
+  const storypoints = await listStorypoints();
+
   return (
     <div className="app-shell">
       <SiteHeader locale={locale} currentUser={currentUser} />
-      <HomeClient locale={locale} storypoints={listStorypoints()} currentUser={currentUser} />
+      <HomeClient locale={locale} storypoints={storypoints} currentUser={currentUser} />
     </div>
   );
 }
