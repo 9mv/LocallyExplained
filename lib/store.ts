@@ -276,9 +276,55 @@ export function authenticateUser(email: string, password: string) {
 }
 
 export function updateUserAccount(
-  userId: string,
-  input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }
-) {
+   userId: string,
+   input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }
+ ) {
+   const store = getStore();
+   const user = store.users.find((item) => item.id === userId);
+
+   if (!user) {
+     return null;
+   }
+
+   if (input.email?.trim() && normalizeEmail(input.email) !== normalizeEmail(user.email)) {
+     const nextEmail = normalizeEmail(input.email);
+
+     if (store.users.some((item) => item.id !== user.id && normalizeEmail(item.email) === nextEmail)) {
+       throw new Error('Email already in use');
+     }
+
+     user.email = nextEmail;
+   }
+
+   if (input.name?.trim()) {
+     user.name = input.name.trim();
+   }
+
+   if (typeof input.profileImageUrl === 'string') {
+     user.profileImageUrl = input.profileImageUrl.trim();
+   }
+
+   if (input.newPassword) {
+     if (!input.currentPassword || !verifyUserPassword(input.currentPassword, user.passwordSalt, user.passwordHash)) {
+       throw new Error('Invalid current password');
+     }
+
+     if (input.newPassword.length < 8) {
+       throw new Error('Password too short');
+     }
+
+     const password = hashUserPassword(input.newPassword);
+     user.passwordSalt = password.salt;
+     user.passwordHash = password.hash;
+   }
+
+   user.updatedAt = new Date().toISOString();
+   persistStore();
+
+   return user;
+ }
+
+export function updateUserPassword(userId: string, recoveryCode: string, expiresAt: number) {
   const store = getStore();
   const user = store.users.find((item) => item.id === userId);
 
@@ -286,38 +332,30 @@ export function updateUserAccount(
     return null;
   }
 
-  if (input.email?.trim() && normalizeEmail(input.email) !== normalizeEmail(user.email)) {
-    const nextEmail = normalizeEmail(input.email);
+  user.recoveryCode = recoveryCode;
+  user.recoveryCodeExpiresAt = expiresAt;
+  persistStore();
 
-    if (store.users.some((item) => item.id !== user.id && normalizeEmail(item.email) === nextEmail)) {
-      throw new Error('Email already in use');
-    }
+  return user;
+}
 
-    user.email = nextEmail;
+export function resetUserPassword(email: string, code: string, newPassword: string) {
+  const store = getStore();
+  const user = getUserByEmail(email);
+
+  if (!user || !user.recoveryCode || !user.recoveryCodeExpiresAt) {
+    return null;
   }
 
-  if (input.name?.trim()) {
-    user.name = input.name.trim();
+  if (user.recoveryCode !== code || user.recoveryCodeExpiresAt < Date.now()) {
+    return null;
   }
 
-  if (typeof input.profileImageUrl === 'string') {
-    user.profileImageUrl = input.profileImageUrl.trim();
-  }
-
-  if (input.newPassword) {
-    if (!input.currentPassword || !verifyUserPassword(input.currentPassword, user.passwordSalt, user.passwordHash)) {
-      throw new Error('Invalid current password');
-    }
-
-    if (input.newPassword.length < 8) {
-      throw new Error('Password too short');
-    }
-
-    const password = hashUserPassword(input.newPassword);
-    user.passwordSalt = password.salt;
-    user.passwordHash = password.hash;
-  }
-
+  const password = hashUserPassword(newPassword);
+  user.passwordSalt = password.salt;
+  user.passwordHash = password.hash;
+  delete user.recoveryCode;
+  delete user.recoveryCodeExpiresAt;
   user.updatedAt = new Date().toISOString();
   persistStore();
 
@@ -407,7 +445,7 @@ export function createStorypointRequest(input: {
   return request;
 }
 
-export function reviewStorypointRequest(id: string, decision: 'approved' | 'rejected') {
+export function reviewStorypointRequest(id: string, decision: 'approved' | 'rejected', reviewerNote?: string) {
   const store = getStore();
   const request = store.requests.find((item) => item.id === id);
 
@@ -417,6 +455,9 @@ export function reviewStorypointRequest(id: string, decision: 'approved' | 'reje
 
   request.status = decision;
   request.reviewedAt = new Date().toISOString();
+  if (reviewerNote) {
+    request.reviewerNote = reviewerNote;
+  }
 
   if (decision === 'approved') {
     const submittedByUserId = request.submittedByUserId;

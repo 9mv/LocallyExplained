@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { adminCookieName, isAdminTokenValid } from '@/lib/auth';
-import { deleteStorypoint } from '@/lib/store';
+import { userCookieName } from '@/lib/auth';
+import { deleteStorypoint, getUserBySessionToken } from '@/lib/store';
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const token = request.headers.get('cookie')?.match(new RegExp(`${adminCookieName()}=([^;]+)`))?.[1];
+  const token = request.headers.get('cookie')?.match(new RegExp(`${userCookieName()}=([^;]+)`))?.[1];
+  const admin = getUserBySessionToken(token);
 
-  if (!isAdminTokenValid(token)) {
+  if (!admin || admin.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

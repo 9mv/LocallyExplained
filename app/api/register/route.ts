@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSession, createUserAccount } from '@/lib/store';
 import { userCookieName } from '@/lib/auth';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
 
   try {
     const user = createUserAccount({ email, password });
+    await sendWelcomeEmail(email, user.name);
     const response = NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } }, { status: 201 });
     response.cookies.set(userCookieName(), createSession(user.id), {
       httpOnly: true,

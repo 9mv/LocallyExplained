@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { userCookieName } from '@/lib/auth';
 import { createStorypointRequest } from '@/lib/store';
 import { getUserBySessionToken } from '@/lib/store';
+import { sendRequestSubmissionEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -29,6 +30,8 @@ export async function POST(request: Request) {
     submittedByUserName: currentUser?.name,
     submittedByProfileImageUrl: currentUser?.profileImageUrl
   });
+
+  await sendRequestSubmissionEmail(email, created.title);
 
   return NextResponse.json({ request: created }, { status: 201 });
 }

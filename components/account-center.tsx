@@ -18,7 +18,7 @@ type Props = {
 export function AccountCenter({ locale, currentUser, requests, favorites, storypoints, returnTo }: Props) {
   const messages = getMessages(locale);
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'register'>(currentUser ? 'login' : 'register');
+  const [mode, setMode] = useState<'login' | 'register' | 'recover'>(currentUser ? 'login' : 'login');
   const [email, setEmail] = useState(currentUser?.email ?? '');
   const [name, setName] = useState(currentUser?.name ?? '');
   const [profileImageUrl, setProfileImageUrl] = useState(currentUser?.profileImageUrl ?? '');
@@ -26,7 +26,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPasswordForReset, setNewPasswordForReset] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const profileRequests = useMemo(() => requests, [requests]);
@@ -65,7 +69,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 <span>{messages.password}</span>
                 <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
               </label>
-              {message ? <div className="notice">{message}</div> : null}
+              {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
                 className="primary-button"
                 type="button"
@@ -73,6 +77,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 onClick={async () => {
                   setSaving(true);
                   setMessage(null);
+                  setIsError(false);
                   try {
                     const response = await fetch('/api/login', {
                       method: 'POST',
@@ -82,6 +87,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
                     if (!response.ok) {
                       setMessage(messages.invalidCredentials);
+                      setIsError(true);
                       return;
                     }
 
@@ -94,8 +100,19 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               >
                 {messages.signIn}
               </button>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => {
+                  setMode('recover');
+                  setMessage(null);
+                  setIsError(false);
+                }}
+              >
+                {messages.forgotPassword}
+              </button>
             </div>
-          ) : (
+          ) : mode === 'register' ? (
             <div className="stack">
               <h2>{messages.register}</h2>
               <label className="field">
@@ -110,7 +127,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 <span>{messages.confirmPassword}</span>
                 <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
               </label>
-              {message ? <div className="notice">{message}</div> : null}
+              {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
                 className="primary-button"
                 type="button"
@@ -118,11 +135,13 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 onClick={async () => {
                   if (password !== confirmPassword) {
                     setMessage(messages.confirmPassword);
+                    setIsError(true);
                     return;
                   }
 
                   setSaving(true);
                   setMessage(null);
+                  setIsError(false);
                   try {
                     const response = await fetch('/api/register', {
                       method: 'POST',
@@ -132,6 +151,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
                     if (!response.ok) {
                       setMessage(response.status === 409 ? messages.emailAlreadyInUse : messages.invalidCredentials);
+                      setIsError(true);
                       return;
                     }
 
@@ -143,6 +163,82 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 }}
               >
                 {messages.register}
+              </button>
+            </div>
+          ) : (
+            <div className="stack">
+              <h2>{messages.recoverPassword}</h2>
+              <label className="field">
+                <span>{messages.requestFormEmail}</span>
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+              </label>
+              <label className="field">
+                <span>{messages.recoveryCode}</span>
+                <input type="text" value={resetCode} onChange={(event) => setResetCode(event.target.value)} placeholder="123456" />
+              </label>
+              <label className="field">
+                <span>{messages.newPassword}</span>
+                <input type="password" value={newPasswordForReset} onChange={(event) => setNewPasswordForReset(event.target.value)} />
+              </label>
+              <label className="field">
+                <span>{messages.confirmPassword}</span>
+                <input type="password" value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} />
+              </label>
+              {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
+              <button
+                className="primary-button"
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  setMessage(null);
+                  setIsError(false);
+                  try {
+                    const response = await fetch('/api/recover', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email, code: resetCode, newPassword: newPasswordForReset, confirmPassword: confirmNewPassword })
+                    });
+
+                    if (!response.ok) {
+                      const data = await response.json();
+                      setMessage(data.error || messages.invalidRecoveryCode);
+                      setIsError(true);
+                      return;
+                    }
+
+                    setMessage(messages.passwordResetSuccess);
+                    setResetCode('');
+                    setNewPasswordForReset('');
+                    setConfirmNewPassword('');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {messages.resetPassword}
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={async () => {
+                  if (saving) return;
+                  setSaving(true);
+                  setMessage(null);
+                  setIsError(false);
+                  try {
+                    await fetch('/api/recover', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email })
+                    });
+                    setMessage(messages.recoveryEmailSent);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {messages.sendRecoveryCode}
               </button>
             </div>
           )}
@@ -203,7 +299,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             <span>{messages.newPassword}</span>
             <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
           </label>
-          {message ? <div className="notice">{message}</div> : null}
+          {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
           <button
             className="primary-button"
             type="button"
@@ -211,6 +307,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             onClick={async () => {
               setSaving(true);
               setMessage(null);
+              setIsError(false);
 
               try {
                 const response = await fetch('/api/account', {
@@ -227,6 +324,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
                 if (!response.ok) {
                   setMessage(response.status === 401 ? messages.signInRequired : messages.invalidCredentials);
+                  setIsError(true);
                   return;
                 }
 

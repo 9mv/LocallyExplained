@@ -7,10 +7,13 @@
       "passwordSalt": "82ea8425f41413d59d69a970900277eb",
       "passwordHash": "4c95dcc678be8d94c4f1529687a4d2e449c8b8c04399cd04ea17d5662c2587f6ab2b9e83b071366297dd13a6074778b6f76ad346e5627f0a86f81840dec06857",
       "profileImageUrl": "",
-      "favoriteStorypointIds": [],
+      "favoriteStorypointIds": [
+        "sheltered-bay",
+        "333cd961-9f29-4349-9c58-424a0f62c561"
+      ],
       "role": "admin",
       "createdAt": "2026-06-14T07:00:00.000Z",
-      "updatedAt": "2026-06-14T07:00:00.000Z"
+      "updatedAt": "2026-06-14T16:56:04.824Z"
     },
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -27,12 +30,103 @@
   ],
   "sessions": [
     {
+      "tokenHash": "336a08983dcec310fc8c237f4e2821261e741e01d5fb449129a1ddd82cefac83",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-14T16:54:52.088Z"
+    },
+    {
+      "tokenHash": "994ddd7aafd2caa38a9c2d83e6a8fa5d53423053dcd46fa446c5c280db762a3c",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-14T16:33:28.419Z"
+    },
+    {
+      "tokenHash": "c33a43a27ceedc470d1e0363b2b976adf5d62c79fff0b304ba8c0bcbb5c3b0e6",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-14T16:29:23.588Z"
+    },
+    {
       "tokenHash": "c5a4f9765c2998083ad9c8fedc183f8f2f0a7aad365d8bc1cb4a9bc968b218df",
       "userId": "admin-user",
       "expiresAt": "2026-07-14T09:39:11.650Z"
     }
   ],
   "storypoints": [
+    {
+      "id": "3cab929d-4456-4449-a300-cbfe61943c4b",
+      "slug": "admin-admin",
+      "locationName": "ADMIN ADMIN",
+      "lat": 41.49322403126169,
+      "lng": 2.0622688003732037,
+      "originalLocale": "ca",
+      "submittedByUserId": "admin-user",
+      "submittedByUserName": "Admin",
+      "submittedByEmail": "admin@locally-explained.local",
+      "submittedByProfileImageUrl": "",
+      "translations": {
+        "ca": {
+          "title": "ADMIN ADMIN",
+          "body": "what is happening?"
+        },
+        "es": {
+          "title": "ADMIN ADMIN",
+          "body": "what is happening?"
+        },
+        "en": {
+          "title": "ADMIN ADMIN",
+          "body": "what is happening?"
+        }
+      }
+    },
+    {
+      "id": "333cd961-9f29-4349-9c58-424a0f62c561",
+      "slug": "testing-no-account",
+      "locationName": "testing no account",
+      "lat": 41.47474502187504,
+      "lng": 2.079073175367597,
+      "originalLocale": "ca",
+      "submittedByUserName": "amartinezvinent",
+      "submittedByEmail": "amartinezvinent@gmail.com",
+      "translations": {
+        "ca": {
+          "title": "testing no account",
+          "body": "test"
+        },
+        "es": {
+          "title": "testing no account",
+          "body": "test"
+        },
+        "en": {
+          "title": "testing no account",
+          "body": "test"
+        }
+      }
+    },
+    {
+      "id": "c6f429b3-f757-4123-a85e-6a8308d32dd5",
+      "slug": "sant-cugat",
+      "locationName": "sant cugat",
+      "lat": 41.47190988103,
+      "lng": 2.085715725140318,
+      "originalLocale": "ca",
+      "submittedByUserId": "admin-user",
+      "submittedByUserName": "Admin",
+      "submittedByEmail": "admin@locally-explained.local",
+      "submittedByProfileImageUrl": "",
+      "translations": {
+        "ca": {
+          "title": "sant cugat",
+          "body": "sant cugat"
+        },
+        "es": {
+          "title": "sant cugat",
+          "body": "sant cugat"
+        },
+        "en": {
+          "title": "sant cugat",
+          "body": "sant cugat"
+        }
+      }
+    },
     {
       "id": "sheltered-bay",
       "slug": "sheltered-bay",
@@ -80,5 +174,75 @@
       }
     }
   ],
-  "requests": []
+  "requests": [
+    {
+      "id": "af97eabf-0265-473c-b95e-46879b663a58",
+      "title": "ADMIN ADMIN",
+      "body": "what is happening?",
+      "email": "admin@locally-explained.local",
+      "locale": "ca",
+      "lat": 41.49322403126169,
+      "lng": 2.0622688003732037,
+      "submittedByUserId": "admin-user",
+      "submittedByUserName": "Admin",
+      "submittedByProfileImageUrl": "",
+      "status": "approved",
+      "createdAt": "2026-06-14T16:55:44.800Z",
+      "reviewedAt": "2026-06-14T16:55:50.429Z"
+    },
+    {
+      "id": "7aa15510-1eba-41fc-a323-e0cf2e30378f",
+      "title": "testing no account",
+      "body": "test",
+      "email": "amartinezvinent@gmail.com",
+      "locale": "ca",
+      "lat": 41.47474502187504,
+      "lng": 2.079073175367597,
+      "status": "approved",
+      "createdAt": "2026-06-14T16:54:29.062Z",
+      "reviewedAt": "2026-06-14T16:55:10.072Z"
+    },
+    {
+      "id": "399a6597-79a5-4ac2-bdfc-b68383489068",
+      "title": "what is that",
+      "body": "what is taht",
+      "email": "xaleixbyx@gmail.com",
+      "locale": "ca",
+      "lat": 41.38546848647135,
+      "lng": 1.5918236717381546,
+      "status": "rejected",
+      "createdAt": "2026-06-14T16:32:02.130Z",
+      "reviewedAt": "2026-06-14T16:53:28.630Z"
+    },
+    {
+      "id": "07418387-9c82-4e31-bb2d-cedce65b97d8",
+      "title": "2",
+      "body": "2",
+      "email": "admin@locally-explained.local",
+      "locale": "ca",
+      "lat": 41.45779982238716,
+      "lng": 2.049700707214896,
+      "submittedByUserId": "admin-user",
+      "submittedByUserName": "Admin",
+      "submittedByProfileImageUrl": "",
+      "status": "approved",
+      "createdAt": "2026-06-14T16:30:56.393Z",
+      "reviewedAt": "2026-06-14T16:53:24.066Z"
+    },
+    {
+      "id": "48d7834a-fa4c-481f-949a-522f82e21db5",
+      "title": "sant cugat",
+      "body": "sant cugat",
+      "email": "admin@locally-explained.local",
+      "locale": "ca",
+      "lat": 41.47190988103,
+      "lng": 2.085715725140318,
+      "submittedByUserId": "admin-user",
+      "submittedByUserName": "Admin",
+      "submittedByProfileImageUrl": "",
+      "status": "approved",
+      "createdAt": "2026-06-14T16:29:43.134Z",
+      "reviewedAt": "2026-06-14T16:53:30.592Z"
+    }
+  ]
 }

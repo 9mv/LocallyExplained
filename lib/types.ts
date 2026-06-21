@@ -18,6 +18,8 @@ export type UserAccount = {
   role: UserRole;
   createdAt: string;
   updatedAt: string;
+  recoveryCode?: string;
+  recoveryCodeExpiresAt?: number;
 };
 
 export type Storypoint = {
@@ -120,4 +122,12 @@ export type Messages = {
   approve: string;
   reject: string;
   pendingRequests: string;
+  forgotPassword: string;
+  recoverPassword: string;
+  sendRecoveryCode: string;
+  recoveryEmailSent: string;
+  invalidRecoveryCode: string;
+  passwordResetSuccess: string;
+  resetPassword: string;
+  recoveryCode: string;
 };

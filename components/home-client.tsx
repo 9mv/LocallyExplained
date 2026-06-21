@@ -112,7 +112,7 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
       <section className="hero-copy card">
         <h1>{messages.mapTitle}</h1>
         <p>{messages.mapCopy}</p>
-        {currentUser ? <div className="notice">{currentUser.name}</div> : null}
+        {/* currentUser ? <div className="notice">{currentUser.name}</div> : null */}
         <div className="content-actions">
           <button
             className="primary-button"
@@ -128,9 +128,9 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
           >
             {requestMode ? messages.cancelRequest : messages.requestStorypoint}
           </button>
-          <Link className="ghost-button" href={`/${locale}/account${requestStatus ? `?returnTo=${encodeURIComponent(`/${locale}`)}` : ''}`}>
+          {/* <Link className="ghost-button" href={`/${locale}/account${requestStatus ? `?returnTo=${encodeURIComponent(`/${locale}`)}` : ''}`}>
             {currentUser ? messages.accountTitle : messages.signIn}
-          </Link>
+          </Link> */}
           <Link className="ghost-button" href={`/${locale}/donations`}>
             {messages.donationsTitle}
           </Link>
