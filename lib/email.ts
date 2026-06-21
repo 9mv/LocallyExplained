@@ -2,7 +2,10 @@ import { Resend } from 'resend';
 
 const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.RESEND_FROM_EMAIL;
-const defaultFromEmail = 'LocallyExplained <onboarding@resend.dev>';
+
+// Only use the fallback in development; production needs a real verified sender
+const isProduction = process.env.NODE_ENV === 'production';
+const defaultFromEmail = isProduction ? null : 'LocallyExplained <onboarding@resend.dev>';
 
 const resend = apiKey ? new Resend(apiKey) : null;
 
@@ -12,15 +15,22 @@ async function sendEmail(to: string, subject: string, text: string) {
     return;
   }
 
+  const sender = fromEmail || defaultFromEmail;
+  if (!sender) {
+    console.error('[mail] No sender configured. Set RESEND_FROM_EMAIL in production.');
+    return;
+  }
+
   try {
-    await resend.emails.send({
-      from: fromEmail || defaultFromEmail,
+    const result = await resend.emails.send({
+      from: sender,
       to,
       subject,
       text
     });
+    console.log(`[mail] Sent ${subject} to ${to}`, result);
   } catch (error) {
-    console.error(`[mail] failed to send ${subject} to ${to}`, error);
+    console.error(`[mail] Failed to send ${subject} to ${to}`, error);
   }
 }
 
