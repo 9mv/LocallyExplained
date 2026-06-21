@@ -1,6 +1,18 @@
 {
   "users": [
     {
+      "id": "a4c57f0c-ec22-44e0-8ead-77c8e8bbc208",
+      "email": "amartinezvinent@gmail.com",
+      "name": "amartinezvinent",
+      "passwordSalt": "53516a3c4c27030b258358e29d629ac8",
+      "passwordHash": "267427e7e1e2879b8f8f9195f2f1eec9de7e0495e4c6defb626836e8e2a66d2e5fb59e2eaa0f045cdb72b8dea94e809d8c88823a6220f6b608d1f3c84982446c",
+      "profileImageUrl": "",
+      "favoriteStorypointIds": [],
+      "role": "user",
+      "createdAt": "2026-06-21T16:22:03.702Z",
+      "updatedAt": "2026-06-21T16:22:03.702Z"
+    },
+    {
       "id": "b762d38c-4f5e-4033-b1bf-1ed343e05cb1",
       "email": "xaleixbyx@gmail.com",
       "name": "xaleixbyx",
@@ -43,6 +55,16 @@
     }
   ],
   "sessions": [
+    {
+      "tokenHash": "d01bf218077cc008e648f53a599a28e061caabf4967cdfbd60ae88d6bf3216f6",
+      "userId": "admin-user",
+      "expiresAt": "2026-07-21T16:22:47.372Z"
+    },
+    {
+      "tokenHash": "e1bd76ac474d589179b883513d6d82d328b591a7d66f5e3f3dd1eab846854d30",
+      "userId": "a4c57f0c-ec22-44e0-8ead-77c8e8bbc208",
+      "expiresAt": "2026-07-21T16:22:04.271Z"
+    },
     {
       "tokenHash": "34c57636531961d29051669e5c3b054bd49ae1f966450d8e915722f97525fa72",
       "userId": "admin-user",
@@ -164,7 +186,8 @@
           "title": "testing no account",
           "body": "test"
         }
-      }
+      },
+      "submittedByUserId": "a4c57f0c-ec22-44e0-8ead-77c8e8bbc208"
     },
     {
       "id": "c6f429b3-f757-4123-a85e-6a8308d32dd5",
@@ -280,7 +303,9 @@
       "lng": 2.079073175367597,
       "status": "approved",
       "createdAt": "2026-06-14T16:54:29.062Z",
-      "reviewedAt": "2026-06-14T16:55:10.072Z"
+      "reviewedAt": "2026-06-14T16:55:10.072Z",
+      "submittedByUserId": "a4c57f0c-ec22-44e0-8ead-77c8e8bbc208",
+      "submittedByUserName": "amartinezvinent"
     },
     {
       "id": "399a6597-79a5-4ac2-bdfc-b68383489068",
