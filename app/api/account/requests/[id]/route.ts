@@ -11,7 +11,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const deleted = await deleteUserStorypointRequest(id, user.id);
+  const deleted = await deleteUserStorypointRequest(id, user.id, user.email);
   if (!deleted) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

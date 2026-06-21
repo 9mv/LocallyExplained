@@ -539,7 +539,7 @@ export async function deleteStorypoint(id: string) {
   return true;
 }
 
-export async function deleteUserStorypointRequest(requestId: string, userId: string) {
+export async function deleteUserStorypointRequest(requestId: string, userId: string, userEmail?: string) {
   const store = await getStore();
   const request = store.requests.find((r) => r.id === requestId);
   if (!request) {
@@ -547,7 +547,9 @@ export async function deleteUserStorypointRequest(requestId: string, userId: str
   }
 
   // Users can only delete their own submitted requests.
-  if (request.submittedByUserId !== userId) {
+  const isOwner = request.submittedByUserId === userId ||
+    (userEmail && normalizeEmail(request.email) === normalizeEmail(userEmail));
+  if (!isOwner) {
     return false;
   }
 

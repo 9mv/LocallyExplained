@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { getMessages } from '@/lib/i18n';
 import { Locale, UserAccount } from '@/lib/types';
 import { LanguageSwitcher } from './language-switcher';
+import { CloseIcon } from './confirm-dialog';
 
 const mobileBreakpoint = '(max-width: 760px)';
 
@@ -82,7 +83,7 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
 
           {isMobile && menuOpen ? (
             <button className="topbar-close-button" type="button" onClick={closeMenu} aria-label="Close menu">
-              X
+              <CloseIcon />
             </button>
           ) : null}
 

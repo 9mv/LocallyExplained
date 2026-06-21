@@ -332,16 +332,21 @@ textarea {
 }
 
 .close-button,
-.icon-button {
-  border: 1px solid var(--border);
-  background: white;
-  border-radius: 999px;
-  width: 38px;
-  height: 38px;
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-}
+ .icon-button,
+ .delete-button {
+   border: 1px solid var(--border);
+   background: white;
+   border-radius: 999px;
+   width: 38px;
+   height: 38px;
+   display: inline-grid;
+   place-items: center;
+   cursor: pointer;
+ }
+
+ .ghost-button.icon-button.delete-button:hover {
+   color: #dc2626;
+ }
 
 .reader {
   padding: 20px;
@@ -642,4 +647,38 @@ textarea {
     transform: translate(-50%, -50%);
     width: min(340px, calc(100vw - 36px));
   }
+}
+
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 18px;
+  padding: 24px;
+  max-width: 400px;
+  width: calc(100% - 32px);
+  box-shadow: var(--shadow);
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 12px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }

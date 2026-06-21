@@ -131,4 +131,8 @@ export type Messages = {
   passwordResetSuccess: string;
   resetPassword: string;
   recoveryCode: string;
-};
+  deleteConfirm: string;
+  deleteRequest: string;
+  deleteFavorite: string;
+  deleteStorypointItem: string;
+ };

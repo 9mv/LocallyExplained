@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getMessages } from '@/lib/i18n';
 import { Locale, Storypoint } from '@/lib/types';
+import { CloseIcon } from './confirm-dialog';
 
 export function StorypointPreview({
   storypoint,
@@ -10,7 +11,7 @@ export function StorypointPreview({
   onToggleFavorite,
   onPlay,
   onClose
- }: {
+  }: {
   storypoint: Storypoint;
   title: string;
   locale: Locale;
@@ -47,7 +48,7 @@ export function StorypointPreview({
             {isFavorite ? '♥' : '♡'}
           </button>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">
-            X
+            <CloseIcon />
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMessages } from '@/lib/i18n';
 import { Locale, Storypoint, StorypointRequest, UserAccount } from '@/lib/types';
+import { ConfirmDialog, CloseIcon } from './confirm-dialog';
 
 type Props = {
   locale: Locale;
@@ -32,6 +33,9 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<'request' | 'favorite' | 'storypoint' | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const profileRequests = useMemo(() => requests.filter((request) => request.status === 'pending'), [requests]);
   const profileStorypoints = useMemo(() => storypoints, [storypoints]);
@@ -43,6 +47,31 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
     }
 
     return false;
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteId || !deleteTarget) return;
+
+    setDeleting(deleteId);
+    setDeleteTarget(null);
+
+    try {
+      const response = await fetch(
+        `/api/account/${deleteTarget === 'request' ? 'requests' : deleteTarget === 'favorite' ? 'favorites' : 'storypoints'}/${deleteId}`,
+        { method: 'DELETE' }
+      );
+      if (response.ok) {
+        router.refresh();
+      }
+    } finally {
+      setDeleting(null);
+      setDeleteId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
+    setDeleteId(null);
   };
 
   if (!currentUser) {
@@ -346,7 +375,21 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             {profileRequests.length === 0 ? <p className="muted">{messages.noPendingRequests}</p> : null}
             {profileRequests.map((request) => (
               <div className="list-item" key={request.id}>
-                <strong>{request.title}</strong>
+                <div className="mini-popup-header">
+                  <strong>{request.title}</strong>
+                  <button
+                    className="ghost-button icon-button delete-button"
+                    type="button"
+                    aria-label={messages.deleteRequest}
+                    disabled={deleting === request.id}
+                    onClick={() => {
+                      setDeleteTarget('request');
+                      setDeleteId(request.id);
+                    }}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
                 <p>{request.body}</p>
               </div>
             ))}
@@ -359,9 +402,23 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             {favorites.length === 0 ? <p className="muted">{messages.noFavorites}</p> : null}
             {favorites.map((storypoint) => (
               <div className="list-item" key={storypoint.id}>
-                <strong>
-                  <Link href={`/${locale}/storypoints/${storypoint.id}`}>{storypoint.locationName}</Link>
-                </strong>
+                <div className="mini-popup-header">
+                  <strong>
+                    <Link href={`/${locale}/storypoints/${storypoint.id}`}>{storypoint.locationName}</Link>
+                  </strong>
+                  <button
+                    className="ghost-button icon-button delete-button"
+                    type="button"
+                    aria-label={messages.deleteFavorite}
+                    disabled={deleting === storypoint.id}
+                    onClick={() => {
+                      setDeleteTarget('favorite');
+                      setDeleteId(storypoint.id);
+                    }}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -373,14 +430,38 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             {profileStorypoints.length === 0 ? <p className="muted">{messages.noStorypoints}</p> : null}
             {profileStorypoints.map((storypoint) => (
               <div className="list-item" key={storypoint.id}>
-                <strong>
-                  <Link href={`/${locale}/storypoints/${storypoint.id}`}>{storypoint.locationName}</Link>
-                </strong>
+                <div className="mini-popup-header">
+                  <strong>
+                    <Link href={`/${locale}/storypoints/${storypoint.id}`}>{storypoint.locationName}</Link>
+                  </strong>
+                  <button
+                    className="ghost-button icon-button delete-button"
+                    type="button"
+                    aria-label={messages.deleteStorypointItem}
+                    disabled={deleting === storypoint.id}
+                    onClick={() => {
+                      setDeleteTarget('storypoint');
+                      setDeleteId(storypoint.id);
+                    }}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </article>
       </section>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={messages.delete}
+        message={messages.deleteConfirm}
+        confirmLabel={messages.delete}
+        cancelLabel={messages.close}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 }

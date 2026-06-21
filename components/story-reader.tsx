@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Locale, Storypoint, UserAccount } from '@/lib/types';
 import { getLocaleStorypoint, getMessages } from '@/lib/i18n';
+import { CloseIcon } from './confirm-dialog';
 
 export function StoryReader({
   locale,
@@ -80,19 +81,19 @@ export function StoryReader({
       <div className="story-actions">
         <div>
           <h1>{story.title}</h1>
-{storypoint.submittedByUserName ? (
-             <p className="submitter-meta">
-               <span className="muted">{messages.requestOwner}</span>
-               {storypoint.submittedByProfileImageUrl ? (
-                 <img src={storypoint.submittedByProfileImageUrl} alt={storypoint.submittedByUserName} />
-               ) : null}
-               {storypoint.submittedByUserId ? (
-                 <Link href={`/${locale}/users/${storypoint.submittedByUserId}`}>{storypoint.submittedByUserName}</Link>
-               ) : (
-                 <span>{storypoint.submittedByUserName}</span>
-               )}
-             </p>
-           ) : null}
+          {storypoint.submittedByUserName ? (
+            <p className="submitter-meta">
+              <span className="muted">{messages.requestOwner}</span>
+              {storypoint.submittedByProfileImageUrl ? (
+                <img src={storypoint.submittedByProfileImageUrl} alt={storypoint.submittedByUserName} />
+              ) : null}
+              {storypoint.submittedByUserId ? (
+                <Link href={`/${locale}/users/${storypoint.submittedByUserId}`}>{storypoint.submittedByUserName}</Link>
+              ) : (
+                <span>{storypoint.submittedByUserName}</span>
+              )}
+            </p>
+          ) : null}
         </div>
         <div className="popup-controls">
           <button className={`icon-button ${favorite ? 'favorite-active' : ''}`} type="button" onClick={() => void toggleFavorite()} aria-label={favorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
@@ -107,7 +108,7 @@ export function StoryReader({
             }}
             aria-label={messages.close}
           >
-            X
+            <CloseIcon />
           </button>
         </div>
       </div>
