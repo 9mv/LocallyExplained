@@ -385,3 +385,58 @@ npm run db:seed     # Seed database
 - For self-hosted deployment, run `next build && next start` with Node.js 22.
 - Required env vars: `DATABASE_URL` (or use JSON fallback), `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`.
 - For email: `RESEND_API_KEY` and `RESEND_FROM_EMAIL`.
+
+## Development Workflow
+
+`main` is the production branch connected to Vercel. Every push to `main` triggers a production deploy.
+
+To work on new features without affecting production:
+
+### 1. Create a feature branch from main
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/my-new-feature
+```
+
+### 2. Commit your work
+
+```bash
+git add -A
+git commit -m "feat: add new feature"
+```
+
+### 3. Push and open a pull request
+
+```bash
+git push -u origin feature/my-new-feature
+```
+
+Open a PR on GitHub. Vercel automatically creates a preview deployment for every PR so you can test before merging.
+
+### 4. Merge to main when ready
+
+After review, merge the PR on GitHub (or locally):
+
+```bash
+git checkout main
+git merge feature/my-new-feature
+git push origin main
+```
+
+Vercel deploys `main` to production.
+
+### 5. Clean up
+
+```bash
+git branch -d feature/my-new-feature
+git push origin --delete feature/my-new-feature
+```
+
+### Tips
+
+- Keep branches short-lived and focused on one feature.
+- Sync with `main` before opening a PR: `git merge main` while on your feature branch.
+- Use descriptive branch names: `feature/`, `fix/`, `refactor/`, `docs/`.
+- If you need a hotfix, branch from `main` directly and merge back fast.
