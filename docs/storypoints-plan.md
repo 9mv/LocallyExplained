@@ -1,6 +1,6 @@
 # LocallyExplained / Storypoints Project
 
-## 1. Project goal
+## 1. Project Goal
 
 LocallyExplained is a multilingual web application for city and location visitors. The application presents an interactive map with pins called **Storypoints**. Each Storypoint represents a place, monument, natural area, historical site, or culturally significant location.
 
@@ -15,22 +15,19 @@ Visitors can:
 - Listen to the story using browser text-to-speech.
 - Request a new Storypoint by selecting a point on the map.
 - Browse donations and project information pages.
+- Create accounts, manage profiles, and save favorites.
 - Administrators can log in and approve or reject Storypoint requests.
 
-The current implementation is an MVP scaffold. It has the full frontend structure, route handlers, localization architecture, map integration, admin UI, and in-memory data storage. Production persistence, real email delivery, and production-grade authentication still need to be wired.
-
----
-
-## 2. Technology stack
+## 2. Current Technology Stack
 
 ### Frontend
 
-- **Next.js**
-  - Application framework.
+- **Next.js 15**
+  - Application framework with App Router.
   - Handles routing, server-rendered pages, API routes, metadata, and build process.
-- **React**
+- **React 19**
   - Component model for the UI.
-- **TypeScript**
+- **TypeScript 5.8**
   - Static typing for components, data models, and route payloads.
 - **CSS**
   - Plain global CSS for the MVP.
@@ -38,7 +35,7 @@ The current implementation is an MVP scaffold. It has the full frontend structur
 
 ### Map
 
-- **MapLibre GL JS**
+- **MapLibre GL JS 5.5**
   - Interactive map engine.
   - Renders the map, pins, navigation controls, and geolocation circle.
 - **OpenStreetMap raster tiles**
@@ -49,11 +46,13 @@ The current implementation is an MVP scaffold. It has the full frontend structur
 
 - **Next.js Route Handlers**
   - API endpoints live under `app/api`.
-  - Used for Storypoints, Storypoint requests, and admin login.
-- **In-memory store**
-  - Currently implemented in `lib/store.ts`.
-  - Useful for local development and MVP testing.
-  - Should be replaced by a database for production.
+  - Used for Storypoints, Storypoint requests, user auth, and admin operations.
+- **Neon PostgreSQL**
+  - Primary data store when `DATABASE_URL` is configured.
+  - Uses a serverless HTTP-based driver (`@neondatabase/serverless`).
+  - For local development without a database, falls back to a JSON file at `.data/locally-explained-db.json`.
+- **In-memory cache**
+  - The store is loaded lazily and cached for the process lifetime.
 
 ### Localization
 
@@ -74,32 +73,20 @@ The current implementation is an MVP scaffold. It has the full frontend structur
   - No server cost.
   - Voice quality depends on browser and operating system.
 
-Future upgrade options:
-
-- Azure Speech
-- Google Cloud Text-to-Speech
-- ElevenLabs
-- Amazon Polly
-
 ### Email
 
-- Current implementation has an email hook in `lib/email.ts`.
-- The hook logs moderation events to the console.
-- Production should use:
-  - Resend
-  - Postmark
-  - SendGrid
-  - Amazon SES
+- **Resend**
+  - Transactional email for: welcome emails, password recovery, request receipts, and moderation notifications.
+  - Falls back to console logging if API key is not configured.
 
 ### Authentication
 
-- Current MVP uses a password-protected admin session cookie.
-- Passwords are compared with HMAC-SHA256.
-- This is acceptable for an early prototype but should be replaced by stronger password hashing, such as Argon2id, before production.
+- User passwords use `scrypt` with random salts.
+- Session management uses HMAC-SHA256 hashed tokens in HTTP-only cookies.
+- Admins are users with `role === 'admin'`.
+- Password recovery uses time-limited 6-digit codes sent via email.
 
----
-
-## 3. Architecture overview
+## 3. Architecture Overview
 
 The project uses a Next.js App Router architecture.
 
@@ -113,13 +100,11 @@ components/
 lib/
   Shared utilities, data models, localization, auth, storage, and email hooks.
 
-docs/
-  Project documentation.
+scripts/
+  One-off Node.js scripts for seeding and migrations.
 ```
 
-The application is divided into three main areas:
-
-### Public visitor area
+### Public Visitor Area
 
 Available without login.
 
@@ -129,38 +114,44 @@ Pages:
 - Storypoint reader page
 - Donations page
 - Who are we page
+- Public user profile
 
-### Story request area
+### User Account Area
 
-Available without login.
+Available after login or registration.
+
+Pages:
+
+- Account center (profile, settings, my requests, favorites, my storypoints)
+- Password recovery flow
+
+### Request Flow
+
+Available without login, but linking to an account is encouraged.
 
 Flow:
 
 1. User presses **Request a storypoint**.
 2. Map enters selection mode.
 3. User clicks the exact location on the map.
-4. Form appears asking for:
-   - Title
-   - Story text
-   - Email
+4. Form appears asking for title, story text, and email.
 5. Request is submitted as pending.
 6. Admin reviews it later.
 
-### Admin area
+### Admin Area
 
-Protected by password.
+Protected by admin role.
 
 Pages and features:
 
-- Admin login page
+- Admin login and dashboard
 - Pending Storypoint request queue
-- Approve action
-- Reject action
-- Email notification hook after moderation
+- Approve/reject actions
+- Delete any storypoint
+- Delete users
+- Email notification to requesters
 
----
-
-## 4. Project structure
+## 4. Project Structure
 
 ```text
 locally-explained/
@@ -168,314 +159,160 @@ locally-explained/
 │  ├─ layout.tsx
 │  ├─ page.tsx
 │  ├─ globals.css
-│  ├─ api/
+│  ├─ [locale]/
+│  │  ├─ page.tsx
+│  │  ├─ account/
+│  │  │  └─ page.tsx
+│  │  ├─ admin/
+│  │  │  └─ page.tsx
+│  │  ├─ donations/
+│  │  │  └─ page.tsx
+│  │  ├─ who-are-we/
+│  │  │  └─ page.tsx
 │  │  ├─ storypoints/
-│  │  │  └─ route.ts
-│  │  ├─ storypoint-requests/
-│  │  │  └─ route.ts
-│  │  └─ admin/
-│  │     ├─ login/
-│  │     │  └─ route.ts
-│  │     └─ storypoint-requests/[id]/
-│  │        └─ route.ts
-│  └─ [locale]/
-│     ├─ page.tsx
-│     ├─ admin/
-│     │  └─ page.tsx
-│     ├─ donations/
-│     │  └─ page.tsx
-│     ├─ who-are-we/
-│     │  └─ page.tsx
-│     └─ storypoints/[id]/
-│        └─ page.tsx
+│  │  │  └─ [id]/page.tsx
+│  │  └─ users/
+│  │     └─ [id]/page.tsx
+│  └─ api/
+│     ├─ storypoints/route.ts
+│     ├─ storypoint-requests/route.ts
+│     ├─ favorites/[id]/route.ts
+│     ├─ recover/route.ts
+│     ├─ login/route.ts
+│     ├─ register/route.ts
+│     ├─ logout/route.ts
+│     ├─ account/route.ts
+│     ├─ account/requests/[id]/route.ts
+│     ├─ account/storypoints/[id]/route.ts
+│     ├─ account/favorites/[id]/route.ts
+│     ├─ admin/storypoint-requests/[id]/route.ts
+│     ├─ admin/storypoints/[id]/route.ts
+│     └─ admin/users/[id]/route.ts
 ├─ components/
-│  ├─ admin-dashboard.tsx
-│  ├─ admin-login.tsx
 │  ├─ home-client.tsx
-│  ├─ language-switcher.tsx
 │  ├─ map-view.tsx
-│  ├─ request-storypoint-form.tsx
-│  ├─ site-header.tsx
 │  ├─ story-reader.tsx
-│  └─ storypoint-preview.tsx
+│  ├─ request-storypoint-form.tsx
+│  ├─ account-center.tsx
+│  ├─ admin-dashboard.tsx
+│  ├─ site-header.tsx
+│  ├─ language-switcher.tsx
+│  ├─ storypoint-preview.tsx
+│  └─ confirm-dialog.tsx
 ├─ docs/
-│  └─ storypoints-plan.md
+│  ├─ DEVELOPER_GUIDE.md
+│  ├─ engineering-guide.md
+│  ├─ USER_DATABASE.md
+│  ├─ storypoints-plan.md
+│  └─ resend-guide.md
 ├─ lib/
-│  ├─ auth.ts
-│  ├─ circle.ts
-│  ├─ email.ts
-│  ├─ i18n.ts
+│  ├─ types.ts
 │  ├─ store.ts
-│  └─ types.ts
+│  ├─ i18n.ts
+│  ├─ auth.ts
+│  ├─ email.ts
+│  ├─ circle.ts
+│  └─ session.ts
+├─ scripts/
+│  └─ seed-db.mjs
 ├─ package.json
-├─ package-lock.json
 ├─ tsconfig.json
-├─ next-env.d.ts
 ├─ next.config.mjs
-└─ prompt.md
+├─ vercel.json
+└─ .env.example
 ```
 
----
-
-## 5. File responsibilities
+## 5. File Responsibilities
 
 ### `app/layout.tsx`
 
-Root layout for the application.
-
-Responsibilities:
-
-- Defines global metadata.
-- Imports MapLibre CSS.
-- Imports global styles.
-- Wraps every page.
+Root layout. Sets metadata, imports MapLibre CSS and global styles.
 
 ### `app/page.tsx`
 
-Root redirect.
-
-Responsibilities:
-
-- Redirects `/` to `/ca`.
+Root redirect from `/` to `/ca`.
 
 ### `app/[locale]/page.tsx`
 
-Home page.
-
-Responsibilities:
-
-- Validates locale.
-- Renders the site header.
-- Renders the interactive map client component.
-- Passes Storypoints from the store.
+Home page. Validates locale, fetches storypoints and current user, renders `SiteHeader` and `HomeClient`.
 
 ### `app/[locale]/storypoints/[id]/page.tsx`
 
-Full Storypoint reader page.
+Story reader page. Fetches storypoint by ID, renders `StoryReader`.
 
-Responsibilities:
+### `app/[locale]/account/page.tsx`
 
-- Finds a Storypoint by ID.
-- Renders the plain text reader.
-- Provides a back route to the map.
-
-### `app/[locale]/donations/page.tsx`
-
-Donations placeholder page.
-
-Responsibilities:
-
-- Shows a placeholder for future PayPal, Stripe, or donation widget integration.
-
-### `app/[locale]/who-are-we/page.tsx`
-
-Project information placeholder page.
-
-Responsibilities:
-
-- Shows placeholder text for the organization or project team.
+User account page. Fetches user data, requests, favorites, and storypoints. Renders `AccountCenter`.
 
 ### `app/[locale]/admin/page.tsx`
 
-Admin page.
+Admin page. Checks `currentUser.role === 'admin'`. Shows `AdminDashboard` for admins, `AccountCenter` for others.
 
-Responsibilities:
+### `app/[locale]/users/[id]/page.tsx`
 
-- Checks the admin session cookie.
-- Shows the login form if not authenticated.
-- Shows the admin dashboard if authenticated.
+Public user profile. Shows user info and their storypoints.
 
 ### `components/home-client.tsx`
 
-Main client-side home component.
-
-Responsibilities:
-
-- Handles request mode.
-- Handles selected Storypoint preview.
-- Handles user location prompt.
-- Stores the user location in `localStorage`.
-- Submits Storypoint requests to `/api/storypoint-requests`.
+Main client-side component. Manages map state, request mode, favorites, and geolocation.
 
 ### `components/map-view.tsx`
 
-Map component.
-
-Responsibilities:
-
-- Initializes MapLibre.
-- Uses OpenStreetMap tiles.
-- Adds Storypoint markers.
-- Handles map click selection when request mode is active.
-- Centers the map on user location when permission is granted.
-- Draws a 3 km geolocation radius circle.
+MapLibre map component. Renders OSM tiles, markers, geolocation circle, and handles clicks.
 
 ### `components/storypoint-preview.tsx`
 
-Mini popup shown over the map.
-
-Responsibilities:
-
-- Shows Storypoint title.
-- Shows the location name.
-- Provides **Play**.
-- Provides close button.
+Mini popup over the map. Shows title, location, Play button, and favorite toggle.
 
 ### `components/story-reader.tsx`
 
-Full Storypoint reader.
-
-Responsibilities:
-
-- Shows title.
-- Shows plain text story.
-- Provides larger and smaller text buttons.
-- Provides play/pause text-to-speech button.
-- Provides close/back button.
+Full story reader. Font size controls, text-to-speech, favorite toggle, back navigation.
 
 ### `components/request-storypoint-form.tsx`
 
-Request form shown after selecting a map point.
+Form for submitting new storypoint requests. Collects title, body, and email.
 
-Responsibilities:
+### `components/account-center.tsx`
 
-- Shows selected coordinates.
-- Collects title, story text, and email.
-- Submits the request to the API.
-
-### `components/admin-login.tsx`
-
-Admin login form.
-
-Responsibilities:
-
-- Collects password.
-- Calls `/api/admin/login`.
-- Refreshes the admin page after login.
+Account management hub. Login, registration, password recovery, profile editing, and content management.
 
 ### `components/admin-dashboard.tsx`
 
-Admin moderation dashboard.
-
-Responsibilities:
-
-- Shows pending requests.
-- Provides approve and reject buttons.
-- Calls `/api/admin/storypoint-requests/[id]`.
-
-### `components/site-header.tsx`
-
-Global site header.
-
-Responsibilities:
-
-- Shows app branding.
-- Shows main navigation links.
-- Shows language switcher.
-- Shows admin login button in the top right.
-
-### `components/language-switcher.tsx`
-
-Locale switcher.
-
-Responsibilities:
-
-- Switches between Catalan, Spanish, and English.
-- Preserves the current page path when changing locale.
-
-### `lib/types.ts`
-
-Shared TypeScript types.
-
-Responsibilities:
-
-- Defines `Locale`.
-- Defines `Storypoint`.
-- Defines `StorypointRequest`.
-- Defines UI message dictionaries.
-
-### `lib/i18n.ts`
-
-Localization dictionary and helpers.
-
-Responsibilities:
-
-- Stores UI translations for `ca`, `es`, and `en`.
-- Provides `getMessages`.
-- Provides `getLocaleStorypoint`.
-- Provides `isLocale`.
+Admin moderation panel. Shows pending requests and all storypoints with approve/reject/delete actions.
 
 ### `lib/store.ts`
 
-In-memory data store.
-
-Responsibilities:
-
-- Stores seed Storypoints.
-- Stores Storypoint requests.
-- Creates new Storypoint requests.
-- Reviews requests.
-- Converts approved requests into Storypoints.
-
-Important note:
-
-This store is in memory. Data will reset when the development server restarts.
+Data access layer. Abstracts Neon PostgreSQL and JSON file storage. All CRUD operations.
 
 ### `lib/auth.ts`
 
-Admin authentication helper.
-
-Responsibilities:
-
-- Verifies admin password.
-- Creates admin session token.
-- Checks admin session token.
-- Provides cookie name.
+Password hashing (`scrypt`), session token minting/verification, HMAC helpers.
 
 ### `lib/email.ts`
 
-Email delivery placeholder.
+Email delivery via Resend. Console fallback when API key is missing.
 
-Responsibilities:
+### `lib/i18n.ts`
 
-- Provides `sendModerationEmail`.
-- Currently logs moderation events to the console.
-- Should be replaced with a real email provider.
+Locale dictionaries for Catalan, Spanish, and English. Translation helpers.
 
 ### `lib/circle.ts`
 
-Geospatial helper.
-
-Responsibilities:
-
-- Generates a geodesic circle polygon.
-- Used to draw the 3 km user-radius circle on the map.
-
----
+Geodesic circle calculation for the 3 km user radius on the map.
 
 ## 6. Routing
 
 ### Root redirect
 
 ```text
-/
-```
-
-Redirects to:
-
-```text
-/ca
+/ -> /ca
 ```
 
 ### Home pages
 
 ```text
-/ca
-/es
-/en
+/ca, /es, /en
 ```
-
-Each locale has its own home page.
 
 ### Storypoint reader
 
@@ -485,213 +322,99 @@ Each locale has its own home page.
 /en/storypoints/[id]
 ```
 
-Example:
+### User profile
 
 ```text
-/ca/storypoints/cala-galdana-cliffs
+/ca/users/[id]
 ```
 
-### Donations
+### Account
 
 ```text
-/ca/donations
-/es/donations
-/en/donations
-```
-
-### Who are we
-
-```text
-/ca/who-are-we
-/es/who-are-we
-/en/who-are-we
+/ca/account
 ```
 
 ### Admin
 
 ```text
 /ca/admin
-/es/admin
-/en/admin
+```
+
+### Donations and About
+
+```text
+/ca/donations
+/ca/who-are-we
 ```
 
 ### API routes
 
 ```text
-GET  /api/storypoints
-POST /api/storypoint-requests
-POST /api/admin/login
-POST /api/admin/storypoint-requests/[id]
+GET    /api/storypoints
+POST   /api/storypoint-requests
+POST   /api/favorites/[id]
+POST   /api/recover
+POST   /api/login
+POST   /api/register
+POST   /api/logout
+PATCH  /api/account
+DELETE /api/account/requests/[id]
+DELETE /api/account/storypoints/[id]
+DELETE /api/account/favorites/[id]
+POST   /api/admin/storypoint-requests/[id]
+DELETE /api/admin/storypoints/[id]
+DELETE /api/admin/users/[id]
 ```
 
----
+## 7. How the Website Works
 
-## 7. How the website works
+### 7.1 First Visit and Default Location
 
-### 7.1 First visit and default location
+The home page starts with a neutral map view centered at longitude 20, latitude 0.
 
-The home page starts with a neutral default map view.
+On first visit, the browser does not automatically ask for location access. If the user presses the location button and allows:
 
-On first visit, the browser does not automatically ask for location access. If the user presses the location button and allows location access:
-
-- The map centers on the user's position.
-- A 3 km radius circle is drawn around the user.
+- The map centers on the user's coordinates.
+- A 3 km radius geodesic circle is drawn.
 - The location is saved in `localStorage`.
-
-If the user refuses location access or wants the default view, the map stays on the neutral default view.
 
 ### 7.2 Storypoints
 
-A Storypoint contains:
+A Storypoint contains title, body, and metadata for three locales, plus geographic coordinates.
 
-- ID
-- Slug
-- Location name
-- Latitude
-- Longitude
-- Original locale
-- Translations for Catalan, Spanish, and English
+Seed data includes two sample Storypoints in Mallorca, Spain.
 
-The current seed data includes generic sample Storypoints.
+### 7.3 Map Interaction
 
-### 7.3 Map pins
+Clicking a marker selects the storypoint and shows a preview popup. In request mode, clicking the map places a new point marker for submission.
 
-Each Storypoint is rendered as a pin on the MapLibre map.
+### 7.4 Search and Discovery
 
-When a user clicks a pin:
+No full-text search is implemented yet. Users discover storypoints by browsing the map and clicking markers.
 
-1. The Storypoint becomes selected.
-2. A mini popup appears.
-3. The popup shows the localized title.
-4. The user can press **Play**.
+### 7.5 Full Story Reader
 
-### 7.4 Mini popup
+The reader page shows the story, adjustable font size, and text-to-speech playback. Submitter info is displayed with a link to their profile.
 
-The mini popup contains:
+### 7.6 Favorites
 
-- Storypoint title
-- Location name
-- **Play** button
-- Close button
+Logged-in users can favorite storypoints. Favorites are managed per user and displayed on the account page.
 
-Pressing **Play** opens the full Storypoint reader.
+### 7.7 Requests
 
-### 7.5 Full Storypoint reader
+Anonymous or logged-in users can submit storypoint requests. The request includes title, body, email, and map coordinates.
 
-The reader page contains:
+### 7.8 Admin Moderation
 
-- Title
-- Plain text story
-- Smaller text button
-- Larger text button
-- Play/pause text-to-speech button
-- Close/back button
+Admins review pending requests. Approval creates a storypoint and emails the requester. Rejection preserves the request record.
 
-Text-to-speech uses the browser `SpeechSynthesisUtterance`.
+### 7.9 Accounts and Profiles
 
-Language mapping:
+Users manage their profile (name, email, avatar URL, password) on the account page. Account deletion cascades to related data.
 
-```text
-ca -> ca-ES
-es -> es-ES
-en -> en-US
-```
+## 8. Data Model
 
-### 7.6 Request a Storypoint
-
-The home page has a **Request a storypoint** button.
-
-Flow:
-
-1. User presses the button.
-2. Request mode is enabled.
-3. User clicks the exact location on the map.
-4. A form appears.
-5. User enters:
-   - Title
-   - Story text
-   - Email
-6. The request is sent to `/api/storypoint-requests`.
-7. The request is stored with status `pending`.
-
-Pressing **Request a storypoint** again cancels request mode.
-
-### 7.7 Donations page
-
-The donations page is currently a placeholder.
-
-Future options:
-
-- PayPal donate button
-- Stripe Payment Link
-- Stripe Checkout
-- Embedded donation widget
-
-### 7.8 Who are we page
-
-The who are we page is currently a placeholder.
-
-Future content should describe:
-
-- Project mission
-- Contributors
-- Local knowledge workflow
-- Editorial principles
-- Contact information
-
-### 7.9 Admin login
-
-The admin login is password-protected.
-
-Default local admin password:
-
-```text
-admin
-```
-
-This can be overridden with environment variables:
-
-```bash
-ADMIN_PASSWORD=your-password
-ADMIN_SESSION_SECRET=your-session-secret
-```
-
-### 7.10 Admin dashboard
-
-After login, the admin can see pending Storypoint requests.
-
-Each request shows:
-
-- Title
-- Email
-- Story text
-- Coordinates
-
-The admin can approve or reject the request.
-
-### 7.11 Approving a request
-
-When a request is approved:
-
-1. Request status becomes `approved`.
-2. A new Storypoint is created from the request.
-3. The new Storypoint uses the submitted title and body for all locales.
-4. The moderation email hook is called.
-
-### 7.12 Rejecting a request
-
-When a request is rejected:
-
-1. Request status becomes `rejected`.
-2. The request remains in the admin history.
-3. No Storypoint is created.
-4. The moderation email hook is called.
-
----
-
-## 8. Data model
-
-### `Storypoint`
+### Storypoint
 
 ```ts
 {
@@ -701,14 +424,15 @@ When a request is rejected:
   lat: number;
   lng: number;
   originalLocale: Locale;
-  translations: Record<Locale, {
-    title: string;
-    body: string;
-  }>;
+  submittedByUserId?: string;
+  submittedByUserName?: string;
+  submittedByEmail?: string;
+  submittedByProfileImageUrl?: string;
+  translations: Record<Locale, { title: string; body: string }>;
 }
 ```
 
-### `StorypointRequest`
+### StorypointRequest
 
 ```ts
 {
@@ -716,6 +440,9 @@ When a request is rejected:
   title: string;
   body: string;
   email: string;
+  submittedByUserId?: string;
+  submittedByUserName?: string;
+  submittedByProfileImageUrl?: string;
   locale: Locale;
   lat: number;
   lng: number;
@@ -726,61 +453,38 @@ When a request is rejected:
 }
 ```
 
-### Production database model
+### UserAccount
 
-For production, use PostgreSQL with PostGIS.
-
-Recommended tables:
-
-```text
-storypoints
-- id
-- slug
-- location_name
-- geom geography(Point, 4326)
-- original_locale
-- status
-- created_at
-- updated_at
-
-storypoint_translations
-- id
-- storypoint_id
-- locale
-- title
-- body
-- translation_source
-- reviewed
-- created_at
-- updated_at
-
-storypoint_requests
-- id
-- title
-- body
-- email
-- locale
-- lat
-- lng
-- status
-- admin_note
-- created_at
-- reviewed_at
-
-admin_users
-- id
-- email
-- password_hash
-- role
-- created_at
-- last_login_at
+```ts
+{
+  id: string;
+  email: string;
+  name: string;
+  passwordSalt: string;
+  passwordHash: string;
+  profileImageUrl: string;
+  favoriteStorypointIds: string[];
+  role: 'user' | 'admin';
+  createdAt: string;
+  updatedAt: string;
+  recoveryCode?: string;
+  recoveryCodeExpiresAt?: number;
+}
 ```
 
----
+### Future Production Schema
 
-## 9. Localization architecture
+For production scale, normalize into:
 
-The MVP uses a simple dictionary-based localization system.
+- `users` table with proper constraints
+- `storypoints` table with PostGIS geometry column
+- `storypoint_translations` table
+- `storypoint_requests` table
+- `sessions` table with indexed expiry
+
+## 9. Localization Architecture
+
+The MVP uses a dictionary-based localization system.
 
 Supported locales:
 
@@ -788,17 +492,9 @@ Supported locales:
 type Locale = 'ca' | 'es' | 'en';
 ```
 
-UI strings live in `lib/i18n.ts`.
+UI strings are stored in `lib/i18n.ts` as a `Record<Locale, Messages>`.
 
-Example:
-
-```ts
-getMessages('ca')
-getMessages('es')
-getMessages('en')
-```
-
-Storypoint translations are stored inside each Storypoint object.
+Storypoint translations are embedded in each `Storypoint.translations` object.
 
 Fallback behavior:
 
@@ -806,349 +502,99 @@ Fallback behavior:
 getLocaleStorypoint(storypoint, locale)
 ```
 
-If a requested translation does not exist, the helper returns the original locale content.
+Returns the requested locale, or falls back to `storypoint.originalLocale`.
 
-Future production architecture:
+## 10. Security Architecture
 
-- Use `next-intl` for route handling and UI translations.
-- Store Storypoint translations in the database.
-- Use DeepL API for automatic translation.
-- Add an admin review step for translated content.
+### Implemented
 
----
+- `scrypt` password hashing with random salts
+- HMAC-SHA256 session token hashing
+- HTTP-only, SameSite=Lax session cookies
+- Locale path validation
+- Admin role checks on protected routes
+- Password recovery with time-limited codes
+- Input validation on API endpoints
 
-## 10. Security architecture
-
-### Current MVP
-
-Implemented:
-
-- Admin password check
-- HTTP-only session cookie
-- Locale validation
-- Basic request payload checks
-- SameSite cookie setting
-
-### Production requirements
-
-Before going live, add:
+### Recommended for Production
 
 - Argon2id password hashing
-- Strong admin password policy
-- Rate limiting on login and request submission
-- CSRF protection for admin actions
-- Email verification for Storypoint submissions
-- Spam protection with hCaptcha or reCAPTCHA
-- HTTPS-only cookies
+- Rate limiting on auth and request endpoints
+- CSRF protection for state-changing operations
+- hCaptcha or reCAPTCHA on request submission
+- Email verification for new accounts
+- HTTPS-only cookies with `secure` flag
 - Content Security Policy headers
-- Input sanitization
-- Audit logs for moderation actions
-- Database permissions and migrations
+- Audit logging for moderation actions
+- Normalized database schema with migrations
 - Monitoring and error reporting
 
----
-
-## 11. Setup instructions
+## 11. Setup Instructions
 
 ### Requirements
 
-Install Node.js first.
+- Node.js 22.x
+- npm 10+
 
-Recommended:
-
-```text
-Node.js 20 or newer
-npm 10 or newer
-```
-
-Check versions:
-
-```bash
-node --version
-npm --version
-```
-
-### Install dependencies
-
-From the project root:
+### Install and Run
 
 ```bash
 npm install
-```
-
-This creates:
-
-```text
-node_modules/
-package-lock.json
-```
-
-### Start development server
-
-```bash
 npm run dev
 ```
 
-By default, Next.js starts on:
+Open `http://localhost:3000`. The root redirects to `/ca`.
 
-```text
-http://localhost:3000
-```
+### Environment Setup
 
-### Preview the app
-
-Open:
-
-```text
-http://localhost:3000
-```
-
-The root redirects to:
-
-```text
-http://localhost:3000/ca
-```
-
-You can also preview other locales:
-
-```text
-http://localhost:3000/es
-http://localhost:3000/en
-```
-
-### Run production build
+Copy `.env.example` to `.env` and configure:
 
 ```bash
-npm run build
+cp .env.example .env
 ```
 
-### Run production server
+Minimum local config:
 
 ```bash
-npm run start
+ADMIN_PASSWORD=admin123
+ADMIN_SESSION_SECRET=replace-with-random-secret
 ```
 
-### Environment variables
-
-Create a local environment file if needed:
+For production database:
 
 ```bash
-cp .env.example .env.local
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
 ```
 
-Recommended variables:
+For email:
 
 ```bash
-ADMIN_PASSWORD=admin
-ADMIN_SESSION_SECRET=replace-with-a-long-random-secret
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=LocallyExplained <noreply@yourdomain.com>
 ```
 
-For production:
+### Seed Database
 
 ```bash
-NODE_ENV=production
-ADMIN_PASSWORD_HASH=argon2id-hash-of-admin-password
-ADMIN_SESSION_SECRET=long-random-secret
+npm run db:seed
 ```
 
-Email provider variables, when email is implemented:
+## 12. Known Limitations
 
-```bash
-RESEND_API_KEY=your-resend-key
-REQUESTOR_EMAIL=noreply@example.com
-```
+- The JSONB storage model does not scale for high concurrency or complex queries.
+- No full-text search for storypoints.
+- No automated translation pipeline yet.
+- Rate limiting and spam protection not implemented.
+- No CI/CD pipeline.
+- Email is best-effort (failures are logged but do not block actions).
 
----
+## 13. Recommended Next Steps
 
-## 12. Local usage guide
-
-### Open the map
-
-```text
-http://localhost:3000/ca
-```
-
-### Select a Storypoint
-
-1. Open the map.
-2. Click a pin.
-3. Read the mini popup.
-4. Press **Play**.
-
-### Open the full reader
-
-The **Play** button opens the full reader page.
-
-### Change language
-
-Use the language switcher in the header.
-
-Example:
-
-```text
-CA
-ES
-EN
-```
-
-### Request a Storypoint
-
-1. Press **Request a storypoint**.
-2. Click the map at the exact location.
-3. Enter title, story text, and email.
-4. Submit the request.
-
-### Open admin page
-
-```text
-http://localhost:3000/ca/admin
-```
-
-### Login as admin
-
-Use the default local password:
-
-```text
-admin
-```
-
-### Moderate a request
-
-1. Open the admin page.
-2. Login.
-3. Review pending requests.
-4. Press **Accept** or **Reject**.
-5. The request status is updated.
-
----
-
-## 13. Production implementation plan
-
-### Phase 1: Database
-
-Add PostgreSQL with PostGIS.
-
-Recommended providers:
-
-- Supabase
-- Neon
-- AWS RDS
-- Azure Database for PostgreSQL
-
-Add Prisma or Drizzle ORM.
-
-Recommended:
-
-```text
-Prisma + PostgreSQL + PostGIS
-```
-
-### Phase 2: Authentication
-
-Replace the current prototype auth with production auth.
-
-Recommended:
-
-- Auth.js / NextAuth
-- Lucia
-- Custom session store with Argon2id
-
-Requirements:
-
-- Strong password hashing
-- Password reset
-- Admin roles
-- Audit logs
-- Secure cookies
-
-### Phase 3: Email
-
-Replace `lib/email.ts`.
-
-Recommended provider:
-
-- Resend
-- Postmark
-
-Email events:
-
-- Request received
-- Request approved
-- Request rejected
-- Admin notification
-
-### Phase 4: Translation automation
-
-Add automatic translation.
-
-Recommended:
-
-- DeepL API for high-quality translations
-- Store translation source metadata
-- Add admin review for machine-translated content
-
-### Phase 5: Hosting
-
-Recommended MVP hosting:
-
-```text
-Frontend/API: Vercel
-Database: Supabase or Neon
-Email: Resend
-Tiles: MapTiler or OpenStreetMap-compatible provider
-```
-
-Alternative full-control hosting:
-
-```text
-App: Fly.io or Render
-Database: managed PostgreSQL
-Email: Postmark or Resend
-```
-
-### Phase 6: Hardening
-
-Add:
-
-- Rate limiting
-- Spam protection
-- CSP headers
-- Monitoring
-- Error reporting
-- Backups
-- Database migrations
-- CI checks
-
----
-
-## 14. Known MVP limitations
-
-The current implementation is intentionally scaffolded.
-
-Current limitations:
-
-- Storypoints and requests are stored in memory.
-- Data resets when the server restarts.
-- Email confirmation is only a placeholder.
-- Admin password hashing uses HMAC-SHA256, not Argon2id.
-- Request submissions are not rate-limited.
-- No spam protection yet.
-- No database migrations yet.
-- No CI pipeline yet.
-- No production deployment configuration yet.
-- `next lint` may need to be replaced with an ESLint setup for newer Next.js versions.
-
----
-
-## 15. Recommended next steps
-
-1. Add PostgreSQL with PostGIS.
-2. Add Prisma schema and migrations.
-3. Replace the in-memory store with database queries.
-4. Add Resend or Postmark for real emails.
-5. Add Argon2id password hashing.
-6. Add rate limiting.
-7. Add spam protection to the request form.
-8. Add automatic translations with DeepL.
-9. Add admin review for translations.
-10. Deploy to Vercel and connect a managed database.
+1. Migrate to a normalized PostgreSQL schema with Prisma or Drizzle.
+2. Add PostgreSQL full-text search for storypoints.
+3. Add Argon2id password hashing.
+4. Add rate limiting and spam protection.
+5. Add automated translation via DeepL or similar.
+6. Add admin review for machine-translated content.
+7. Add CI/CD with database migrations.
+8. Add monitoring and error reporting.

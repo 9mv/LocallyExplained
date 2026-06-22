@@ -1,99 +1,216 @@
-# User Database and Admin Guide
+# User Account and Data Model Guide
 
-This guide explains how the user account system works in LocallyExplained.
+This guide explains the data models, persistence layer, and account flows in LocallyExplained.
 
-## Database Location
+## Persistence Layer
 
-The database is a JSON file stored at `.data/locally-explained-db.json`. It contains:
+The app supports two storage backends, selected automatically based on environment variables.
 
-- `users`: Array of user accounts
-- `sessions`: Array of active session tokens
-- `storypoints`: Array of story point data
-- `requests`: Array of storypoint requests
+### Neon PostgreSQL (Production)
 
-## User Account Model
+When `DATABASE_URL`, `POSTGRES_URL`, or `NEON_DATABASE_URL` is set, the app uses Neon serverless PostgreSQL.
 
-Each user account has these fields:
+Schema: A single table holds the entire application state as JSONB.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique UUID identifier |
-| `email` | string | Unique email address (normalized to lowercase) |
-| `name` | string | Display name (derived from email if not provided) |
-| `passwordSalt` | string | Random 32-char hex salt for password hashing |
-| `passwordHash` | string | Scrypt-derived key from password + salt |
-| `profileImageUrl` | string | Optional URL to profile picture |
-| `favoriteStorypointIds` | string[] | List of storypoint IDs the user favorited |
-| `role` | 'user' \| 'admin' | User role for access control |
-| `createdAt` | string | ISO timestamp |
-| `updatedAt` | string | ISO timestamp |
-
-## Registration Flow
-
-1. User submits email, password, and password confirmation to `/api/register`
-2. System checks if email already exists → returns 409 Conflict if so
-3. Password must be at least 8 characters
-4. Creates `passwordSalt` and `passwordHash` using scrypt (64-byte output)
-5. Sets default `role` to `'user'`
-6. Creates session token and returns it as HTTP-only cookie
-7. Returns user object without sensitive fields
-
-## Login Flow
-
-1. User submits email and password to `/api/login`
-2. System validates credentials via `scrypt` comparison
-3. If valid, creates session token stored as `locally_explained_user` cookie
-4. Cookie lasts 30 days, HTTP-only, SameSite=lax
-
-## Admin Access
-
-Admin is now a **regular user with the `admin` role**:
-
-- Admin panel at `/[locale]/admin` checks `currentUser.role === 'admin'`
-- If not admin, the account center is shown instead
-- Same login endpoint works for both user and admin authentication
-- Admin can:
-  - View and approve/reject storypoint requests
-  - Delete any storypoint
-  - See submitter name/email on requests and storypoints
-
-To create an admin user, set environment variables:
-
-```env
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=your-secure-password
+```sql
+CREATE TABLE IF NOT EXISTS locally_explained_state (
+  id integer PRIMARY KEY,
+  data jsonb NOT NULL
+);
 ```
 
-On first run, an admin user is auto-created with these credentials.
+The `data` column contains the full `Store` object (users, sessions, storypoints, requests). This is practical for an MVP but should be normalized for production scale.
 
-## Session Management
+### JSON File Fallback (Local Development)
 
-- Tokens are random 64-char hex strings
-- Token hashes stored in database for session verification
-- `getUserBySessionToken(token)` returns user if session valid
-- Sessions expire after 30 days
+When no database URL is configured, the app writes to `.data/locally-explained-db.json`.
 
-## Email Notifications
+The file format mirrors the in-memory `Store` type exactly:
 
-When an admin approves/rejects a request, `sendModerationEmail()` is called:
+```json
+{
+  "users": [],
+  "sessions": [],
+  "storypoints": [],
+  "requests": []
+}
+```
 
-- If `RESEND_API_KEY` and `RESEND_FROM_EMAIL` env vars set → sends via Resend API
-- Otherwise logs to console
+To reset local data, delete the file:
 
-## Profile Image
+```bash
+rm .data/locally-explained-db.json
+```
 
-Each user can set a `profileImageUrl` in their account settings:
+## Core Data Types
 
-- Image shown next to their name on storypoints and requests
-- Stored as a URL string in the user account and copied to owned storypoints
-- If unset, shows a placeholder with their initials
-- On the profile page, displays at larger size
+### UserAccount
 
-## Test User
+```typescript
+type UserAccount = {
+  id: string;                  // UUID
+  email: string;               // Normalized lowercase
+  name: string;                // Display name
+  passwordSalt: string;        // 16-byte hex for scrypt
+  passwordHash: string;        // 64-byte hex derived key
+  profileImageUrl: string;     // External URL or empty
+  favoriteStorypointIds: string[]; // Linked storypoint IDs
+  role: 'user' | 'admin';      // Access control
+  createdAt: string;           // ISO timestamp
+  updatedAt: string;           // ISO timestamp
+  recoveryCode?: string;       // 6-digit reset code
+  recoveryCodeExpiresAt?: number; // Unix ms
+};
+```
 
-A test user was created:
+### Storypoint
 
-- Email: `user1@example.com`
-- Password: `12345678`
+```typescript
+type Storypoint = {
+  id: string;                        // UUID
+  slug: string;                      // URL-safe identifier
+  locationName: string;              // Human-readable place name
+  lat: number;                       // Latitude (WGS84)
+  lng: number;                       // Longitude (WGS84)
+  originalLocale: Locale;            // Source language
+  submittedByUserId?: string;        // Linked user ID
+  submittedByUserName?: string;      // Submitter display name
+  submittedByEmail?: string;         // Submitter email
+  submittedByProfileImageUrl?: string; // Submitter avatar
+  translations: Record<Locale, StoryTranslation>;
+};
 
-You can sign in at `/[locale]/account` to test the user flow.
+type StoryTranslation = {
+  title: string;
+  body: string;
+};
+```
+
+### StorypointRequest
+
+```typescript
+type StorypointRequest = {
+  id: string;                        // UUID
+  title: string;
+  body: string;
+  email: string;
+  submittedByUserId?: string;
+  submittedByUserName?: string;
+  submittedByProfileImageUrl?: string;
+  locale: Locale;
+  lat: number;
+  lng: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  reviewedAt?: string;
+  reviewerNote?: string;
+};
+```
+
+### SessionRecord (Internal)
+
+```typescript
+type SessionRecord = {
+  tokenHash: string;       // HMAC-SHA256 of session token
+  userId: string;          // References UserAccount.id
+  expiresAt: string;       // ISO timestamp (30 days)
+};
+```
+
+## User Account Flows
+
+### Registration
+
+1. Client sends `POST /api/register` with email, password, confirmPassword.
+2. Server validates: email required, password min 8 chars, passwords must match.
+3. Server creates `passwordSalt` (random 16-byte hex) and `passwordHash` (scrypt 64-byte).
+4. Creates `UserAccount` with `role: 'user'`.
+5. Calls `claimContentForEmail()` to link any prior anonymous requests/storypoints to the new user.
+6. Creates a session token (random 32-byte hex).
+7. Returns user object (no sensitive fields) and HTTP-only cookie `locally_explained_user`.
+
+### Login
+
+1. Client sends `POST /api/login` with email and password.
+2. Server finds user by normalized email.
+3. Server verifies password via `scrypt` + timing-safe comparison.
+4. Creates session token and HTTP-only cookie.
+5. Returns user object.
+
+### Password Recovery
+
+1. Client sends `POST /api/recover` with `email`.
+2. Server generates a 6-digit numeric code, stores it with 1-hour expiry.
+3. Server sends email via Resend (or logs to console).
+4. Client sends `POST /api/recover` with `email`, `code`, `newPassword`, `confirmPassword`.
+5. Server validates code and expiry, updates password hash and salt.
+6. Clears recovery code from user record.
+
+### Session Management
+
+- Session tokens are random 32-byte hex strings.
+- Token hashes are stored server-side to prevent token theft from the database.
+- Sessions expire after 30 days.
+- `getCurrentUser()` reads the cookie, looks up the session, and returns the user or `null`.
+- Expired sessions are purged on every access.
+
+### Account Management
+
+Users can update their profile via `PATCH /api/account`:
+
+- Email (must remain unique)
+- Name
+- Profile image URL
+- Password (requires current password for verification)
+
+### Admin Operations
+
+Admins (`role === 'admin'`) can:
+
+- **Approve/reject requests** via `POST /api/admin/storypoint-requests/[id]`.
+- **Delete any storypoint** via `DELETE /api/admin/storypoints/[id]`.
+- **Delete users** via `DELETE /api/admin/users/[id]`.
+
+Self-deletion is blocked for safety (at least one admin must remain).
+
+### Content Ownership
+
+When a user registers, the system calls `claimContentForEmail()`:
+
+- Matches any unlinked `StorypointRequest` or `Storypoint` by email.
+- Sets `submittedByUserId`, `submittedByUserName`, and `submittedByProfileImageUrl`.
+- This ensures users can manage their prior contributions even if submitted anonymously.
+
+## Default Accounts
+
+An admin user is auto-created on first load:
+
+| Field | Value |
+|-------|-------|
+| Email | `ADMIN_EMAIL` env var or `admin@locally-explained.local` |
+| Password | `ADMIN_PASSWORD` env var or `admin` |
+| Role | `admin` |
+
+No default test users are seeded. Use the environment variables to configure production credentials.
+
+## Email Integration
+
+Emails are sent via the Resend client in `lib/email.ts`.
+
+Functions:
+
+- `sendWelcomeEmail(to, name)` - Sent after registration
+- `sendRecoveryEmail(to, code)` - Sent for password recovery
+- `sendRequestSubmissionEmail(to, title)` - Sent after creating a request
+- `sendRequestNotification(to, status, title, note?)` - Sent after moderation
+
+If `RESEND_API_KEY` is not set, emails are logged to the console instead of being sent.
+
+## Database Seeding
+
+Run `npm run db:seed` to execute `scripts/seed-db.mjs`.
+
+This script:
+1. Loads environment variables from `.env`.
+2. Connects to the configured database (Neon or local JSON).
+3. Ensures seed data exists (default admin account).
