@@ -34,6 +34,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [recoveryAction, setRecoveryAction] = useState<'send-code' | 'reset-password' | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<'request' | 'favorite' | 'storypoint' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -234,9 +235,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               <button
                 className="primary-button"
                 type="button"
-                disabled={saving}
+                disabled={recoveryAction !== null}
                 onClick={async () => {
-                  setSaving(true);
+                  if (recoveryAction) return;
+
+                  setRecoveryAction('reset-password');
                   setMessage(null);
                   setIsError(false);
                   try {
@@ -258,19 +261,21 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     setNewPasswordForReset('');
                     setConfirmNewPassword('');
                   } finally {
-                    setSaving(false);
+                    setRecoveryAction(null);
                   }
                 }}
               >
                 {messages.resetPassword}
-                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
+                {recoveryAction === 'reset-password' ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
               <button
                 className="ghost-button"
                 type="button"
+                disabled={recoveryAction !== null}
                 onClick={async () => {
-                  if (saving) return;
-                  setSaving(true);
+                  if (recoveryAction) return;
+
+                  setRecoveryAction('send-code');
                   setMessage(null);
                   setIsError(false);
                   try {
@@ -281,12 +286,12 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     });
                     setMessage(messages.recoveryEmailSent);
                   } finally {
-                    setSaving(false);
+                    setRecoveryAction(null);
                   }
                 }}
               >
                 {messages.sendRecoveryCode}
-                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
+                {recoveryAction === 'send-code' ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
             </div>
           )}

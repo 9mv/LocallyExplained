@@ -17,7 +17,7 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
   const [isAtTop, setIsAtTop] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [loggingOutTarget, setLoggingOutTarget] = useState<'nav' | 'drawer' | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -57,16 +57,18 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
 
   const closeMenu = () => setMenuOpen(false);
 
-  const handleLogout = async () => {
-    if (loggingOut) return;
+  const isLoggingOut = (target: 'nav' | 'drawer') => loggingOutTarget === target;
 
-    setLoggingOut(true);
+  const handleLogout = async (target: 'nav' | 'drawer') => {
+    if (loggingOutTarget) return;
+
+    setLoggingOutTarget(target);
 
     try {
       await fetch('/api/logout', { method: 'POST' });
       router.refresh();
     } finally {
-      setLoggingOut(false);
+      setLoggingOutTarget(null);
     }
   };
 
@@ -135,8 +137,8 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
                         {messages.adminTitle}
                       </Link>
                     ) : null}
-                    <button className="ghost-button" type="button" onClick={handleLogout} disabled={loggingOut}>
-                      {loggingOut ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
+                    <button className="ghost-button" type="button" onClick={() => void handleLogout('nav')} disabled={loggingOutTarget !== null}>
+                      {isLoggingOut('nav') ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
                       {messages.signOut}
                     </button>
                   </div>
@@ -174,8 +176,8 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
                       {messages.adminTitle}
                     </Link>
                   ) : null}
-                  <button className="ghost-button" type="button" onClick={handleLogout} disabled={loggingOut}>
-                    {loggingOut ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
+                  <button className="ghost-button" type="button" onClick={() => void handleLogout('drawer')} disabled={loggingOutTarget !== null}>
+                    {isLoggingOut('drawer') ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
                     {messages.signOut}
                   </button>
                 </>

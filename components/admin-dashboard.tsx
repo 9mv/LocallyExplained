@@ -79,43 +79,55 @@ export function AdminDashboard({ locale, requests, storypoints }: { locale: Loca
 }
 
 function RequestActions({ request, messages }: { request: StorypointRequest; messages: any }) {
-  const [sending, setSending] = useState(false);
+  const [sendingDecision, setSendingDecision] = useState<'approved' | 'rejected' | null>(null);
 
   return (
     <div className="content-actions">
       <button
         className="primary-button"
         type="button"
-        disabled={sending}
+        disabled={sendingDecision !== null}
         onClick={async () => {
-          setSending(true);
-          await fetch(`/api/admin/storypoint-requests/${request.id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision: 'approved' })
-          });
-          window.location.reload();
+          if (sendingDecision) return;
+
+          setSendingDecision('approved');
+          try {
+            await fetch(`/api/admin/storypoint-requests/${request.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ decision: 'approved' })
+            });
+            window.location.reload();
+          } finally {
+            setSendingDecision(null);
+          }
         }}
       >
         {messages.approve}
-        {sending ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
+        {sendingDecision === 'approved' ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
       </button>
       <button
         className="ghost-button"
         type="button"
-        disabled={sending}
+        disabled={sendingDecision !== null}
         onClick={async () => {
-          setSending(true);
-          await fetch(`/api/admin/storypoint-requests/${request.id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ decision: 'rejected' })
-          });
-          window.location.reload();
+          if (sendingDecision) return;
+
+          setSendingDecision('rejected');
+          try {
+            await fetch(`/api/admin/storypoint-requests/${request.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ decision: 'rejected' })
+            });
+            window.location.reload();
+          } finally {
+            setSendingDecision(null);
+          }
         }}
       >
         {messages.reject}
-        {sending ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
+        {sendingDecision === 'rejected' ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
       </button>
     </div>
   );

@@ -5,6 +5,8 @@ import { getUserBySessionToken } from './store';
 export async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(userCookieName())?.value;
-
-  return await getUserBySessionToken(token);
+  console.log('[session] getCurrentUser', { hasToken: !!token });
+  const user = await getUserBySessionToken(token);
+  console.log('[session] getCurrentUser result', { userId: user?.id ?? null });
+  return user;
 }

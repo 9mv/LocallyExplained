@@ -67,7 +67,7 @@ export function AdminUsersPanel({ locale, users }: { locale: Locale; users: Admi
                   if (!window.confirm('Delete this account?')) return;
                   setDeletingId(u.id);
                   try {
-                    const res = await fetch(`/${locale}/api/admin/users/${u.id}`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE' });
                     if (!res.ok) {
                       const data = await res.json().catch(() => ({}));
                       window.alert(data.error || 'Delete failed');

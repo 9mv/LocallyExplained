@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { userCookieName } from '@/lib/auth';
 
 export async function POST() {
+  console.log('[logout] clearing user cookie');
   const response = NextResponse.json({ ok: true });
 
   response.cookies.set(userCookieName(), '', {
