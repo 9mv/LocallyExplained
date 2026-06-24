@@ -58,9 +58,16 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
   const closeMenu = () => setMenuOpen(false);
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+
     setLoggingOut(true);
-    await fetch('/api/logout', { method: 'POST' });
-    router.refresh();
+
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (

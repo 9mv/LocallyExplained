@@ -89,7 +89,35 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
           </div>
 
           {mode === 'login' ? (
-            <div className="stack">
+            <form
+              className="stack"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (saving) return;
+
+                setSaving(true);
+                setMessage(null);
+                setIsError(false);
+                try {
+                  const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                  });
+
+                  if (!response.ok) {
+                    setMessage(messages.invalidCredentials);
+                    setIsError(true);
+                    return;
+                  }
+
+                  router.refresh();
+                  redirectAfterAuth();
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
               <h2>{messages.signIn}</h2>
               <label className="field">
                 <span>{messages.requestFormEmail}</span>
@@ -102,31 +130,8 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
                 className="primary-button"
-                type="button"
+                type="submit"
                 disabled={saving}
-                onClick={async () => {
-                  setSaving(true);
-                  setMessage(null);
-                  setIsError(false);
-                  try {
-                    const response = await fetch('/api/login', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ email, password })
-                    });
-
-                    if (!response.ok) {
-                      setMessage(messages.invalidCredentials);
-                      setIsError(true);
-                      return;
-                    }
-
-                    router.refresh();
-                    redirectAfterAuth();
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
               >
                 {messages.signIn}
                 {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
@@ -142,7 +147,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               >
                 {messages.forgotPassword}
               </button>
-            </div>
+            </form>
           ) : mode === 'register' ? (
             <div className="stack">
               <h2>{messages.register}</h2>
@@ -296,16 +301,23 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               <p>{currentUser.email}</p>
             </div>
           </div>
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={async () => {
-                setLoggingOut(true);
-                await fetch('/api/logout', { method: 'POST' });
-                router.refresh();
-              }}
-              disabled={loggingOut}
-            >
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={async () => {
+                  if (loggingOut) return;
+
+                  setLoggingOut(true);
+
+                  try {
+                    await fetch('/api/logout', { method: 'POST' });
+                    router.refresh();
+                  } finally {
+                    setLoggingOut(false);
+                  }
+                }}
+                disabled={loggingOut}
+              >
               {loggingOut ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
               {messages.signOut}
             </button>
