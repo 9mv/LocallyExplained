@@ -22,7 +22,12 @@ export async function POST(request: Request) {
   if (!code) {
     if (user) {
       await updateUserPassword(user.id, recoveryCode, expiresAt);
-      await sendRecoveryEmail(email, recoveryCode);
+      const result = await sendRecoveryEmail(email, recoveryCode);
+      if (!result.ok) {
+        // The user exists, so revealing a delivery failure does not leak account
+        // existence and lets the user (and operator) act on the real problem.
+        return NextResponse.json({ error: 'Could not send recovery email. Please try again later.' }, { status: 502 });
+      }
     }
     return NextResponse.json({ message: 'If the email exists, a recovery code has been sent.' });
   }

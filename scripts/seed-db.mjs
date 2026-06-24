@@ -76,6 +76,13 @@ async function ensureSchema() {
     )
   `;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS locally_explained_users_email_lower_idx ON locally_explained_users (lower(email))`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS username text`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS is_verified boolean NOT NULL DEFAULT true`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code text`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code_expires_at timestamptz`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code_sent_at timestamptz`;
+  await sql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_attempts integer NOT NULL DEFAULT 0`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS locally_explained_users_username_lower_idx ON locally_explained_users (lower(username)) WHERE username IS NOT NULL`;
   await sql`
     CREATE TABLE IF NOT EXISTS locally_explained_storypoints (
       id text PRIMARY KEY,
@@ -152,9 +159,9 @@ async function main() {
   for (const user of data.users) {
     await sql`
       INSERT INTO locally_explained_users (
-        id, email, name, password_salt, password_hash, profile_image_url, role, created_at, updated_at
+        id, email, name, password_salt, password_hash, profile_image_url, role, is_verified, created_at, updated_at
       ) VALUES (
-        ${user.id}, ${user.email}, ${user.name}, ${user.passwordSalt}, ${user.passwordHash}, ${user.profileImageUrl}, ${user.role}, ${user.createdAt}, ${user.updatedAt}
+        ${user.id}, ${user.email}, ${user.name}, ${user.passwordSalt}, ${user.passwordHash}, ${user.profileImageUrl}, ${user.role}, true, ${user.createdAt}, ${user.updatedAt}
       )
     `;
   }

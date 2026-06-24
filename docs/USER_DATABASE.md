@@ -199,7 +199,7 @@ Emails are sent via the Resend client in `lib/email.ts`.
 
 Functions:
 
-- `sendWelcomeEmail(to, name)` - Sent after registration
+- `sendVerificationEmail(to, code)` - Sent during registration (verification code)
 - `sendRecoveryEmail(to, code)` - Sent for password recovery
 - `sendRequestSubmissionEmail(to, title)` - Sent after creating a request
 - `sendRequestNotification(to, status, title, note?)` - Sent after moderation

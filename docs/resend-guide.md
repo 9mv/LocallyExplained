@@ -2,7 +2,7 @@
 
 Resend is the transactional email provider for LocallyExplained. It handles:
 
-- Welcome emails after account creation
+- Welcome/verification emails during account registration
 - Password recovery codes
 - Storypoint request submission confirmations
 - Moderation decisions (approved/rejected)
@@ -30,13 +30,12 @@ In local development, the app uses `onboarding@resend.dev` as the sender if `RES
 
 All email sending is centralized in `lib/email.ts`:
 
+### `sendVerificationEmail(to, code)`
+Sends a 6-digit account verification code. The code expires in 5 minutes and is only valid until a newer code is requested.
+
 ### `sendRecoveryEmail(to, code)`
 
 Sends a 6-digit password recovery code. The code expires in 1 hour.
-
-### `sendWelcomeEmail(to, name)`
-
-Sent after successful user registration.
 
 ### `sendRequestSubmissionEmail(to, title)`
 
@@ -59,10 +58,12 @@ All public functions delegate to this helper. It:
 
 ### Registration
 
-1. Client: `POST /api/register`
-2. Server: Creates user account in store.
-3. Server: Calls `sendWelcomeEmail(user.email, user.name)`.
-4. Server: Creates session, returns user and cookie.
+1. Client: `POST /api/register` with username, email, password, confirm password.
+2. Server: Creates an unverified user account and stores a 6-digit verification code (5-min expiry).
+3. Server: Calls `sendVerificationEmail(user.email, code)` and returns an opaque resume token.
+4. Client: `POST /api/register/verify` with the resume token and code.
+5. Server: Validates the code (max 5 attempts, latest code only), marks the account verified, creates a session, and sets the cookie (auto-login).
+6. `POST /api/register/resend` (with resume token) issues a new code, enforcing a 2-minute cooldown; only the latest code is valid.
 
 ### Password Recovery
 

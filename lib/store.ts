@@ -1,8 +1,8 @@
 import { access, mkdir, readFile, writeFile } from 'fs/promises';
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { join } from 'path';
 import { neon } from '@neondatabase/serverless';
-import { hashSessionToken, hashUserPassword, verifyUserPassword, mintSessionToken } from './auth';
+import { hashSessionToken, hashUserPassword, verifyUserPassword, mintSessionToken, VERIFICATION_CODE_TTL_MS, RESEND_COOLDOWN_MS, MAX_VERIFY_ATTEMPTS } from './auth';
 import { Locale, Storypoint, StorypointRequest, UserAccount } from './types';
 
 type SessionRecord = {
@@ -92,6 +92,15 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function normalizeUsername(username: string) {
+  return username.trim();
+}
+
+function isUsernameTaken(store: Store, username: string) {
+  const normalized = normalizeUsername(username);
+  return store.users.some((user) => user.username != null && user.username.toLowerCase() === normalized.toLowerCase());
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -128,6 +137,7 @@ function defaultStore(): Store {
         profileImageUrl: '',
         favoriteStorypointIds: [],
         role: 'admin',
+        isVerified: true,
         createdAt,
         updatedAt: createdAt
       }
@@ -164,6 +174,13 @@ async function ensureRemoteSchema() {
     )
   `;
   await remoteSql`CREATE UNIQUE INDEX IF NOT EXISTS locally_explained_users_email_lower_idx ON locally_explained_users (lower(email))`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS username text`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS is_verified boolean NOT NULL DEFAULT true`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code text`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code_expires_at timestamptz`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_code_sent_at timestamptz`;
+  await remoteSql`ALTER TABLE locally_explained_users ADD COLUMN IF NOT EXISTS verification_attempts integer NOT NULL DEFAULT 0`;
+  await remoteSql`CREATE UNIQUE INDEX IF NOT EXISTS locally_explained_users_username_lower_idx ON locally_explained_users (lower(username)) WHERE username IS NOT NULL`;
   await remoteSql`
     CREATE TABLE IF NOT EXISTS locally_explained_user_sessions (
       token_hash text PRIMARY KEY,
@@ -258,9 +275,9 @@ async function persistRemoteStore(store: Store) {
     tx`DELETE FROM locally_explained_users`,
     ...normalized.users.map((user) => tx`
         INSERT INTO locally_explained_users (
-          id, email, name, password_salt, password_hash, profile_image_url, role, created_at, updated_at, recovery_code, recovery_code_expires_at
+          id, email, name, username, password_salt, password_hash, profile_image_url, role, is_verified, verification_code, verification_code_expires_at, verification_code_sent_at, verification_attempts, created_at, updated_at, recovery_code, recovery_code_expires_at
         ) VALUES (
-          ${user.id}, ${normalizeEmail(user.email)}, ${user.name}, ${user.passwordSalt}, ${user.passwordHash}, ${user.profileImageUrl}, ${user.role}, ${user.createdAt}, ${user.updatedAt}, ${user.recoveryCode ?? null}, ${user.recoveryCodeExpiresAt ? new Date(user.recoveryCodeExpiresAt).toISOString() : null}
+          ${user.id}, ${normalizeEmail(user.email)}, ${user.name}, ${user.username ?? null}, ${user.passwordSalt}, ${user.passwordHash}, ${user.profileImageUrl}, ${user.role}, ${user.isVerified ?? true}, ${user.verificationCode ?? null}, ${user.verificationCodeExpiresAt ? new Date(user.verificationCodeExpiresAt).toISOString() : null}, ${user.verificationCodeSentAt ? new Date(user.verificationCodeSentAt).toISOString() : null}, ${user.verificationAttempts ?? 0}, ${user.createdAt}, ${user.updatedAt}, ${user.recoveryCode ?? null}, ${user.recoveryCodeExpiresAt ? new Date(user.recoveryCodeExpiresAt).toISOString() : null}
         )
       `),
     ...normalized.storypoints.map((storypoint) => tx`
@@ -317,7 +334,7 @@ async function loadRemoteStore(): Promise<Store> {
 
   const [metaRows, userRows, sessionRows, storypointRows, translationRows, requestRows, favoriteRows] = await remoteSql!.transaction((tx) => [
     tx`SELECT revision FROM locally_explained_meta WHERE id = 1`,
-    tx`SELECT id, email, name, password_salt, password_hash, profile_image_url, role, created_at, updated_at, recovery_code, recovery_code_expires_at FROM locally_explained_users ORDER BY created_at DESC`,
+    tx`SELECT id, email, name, username, password_salt, password_hash, profile_image_url, role, is_verified, verification_code, verification_code_expires_at, verification_code_sent_at, verification_attempts, created_at, updated_at, recovery_code, recovery_code_expires_at FROM locally_explained_users ORDER BY created_at DESC`,
     tx`SELECT token_hash, user_id, expires_at, created_at FROM locally_explained_user_sessions ORDER BY created_at DESC`,
     tx`SELECT id, slug, location_name, lat, lng, original_locale, submitted_by_user_id, submitted_by_user_name, submitted_by_email, submitted_by_profile_image_url, created_at, updated_at FROM locally_explained_storypoints ORDER BY created_at DESC`,
     tx`SELECT storypoint_id, locale, title, body FROM locally_explained_storypoint_translations`,
@@ -350,11 +367,17 @@ async function loadRemoteStore(): Promise<Store> {
       id: row.id,
       email: row.email,
       name: row.name,
+      username: row.username ?? undefined,
       passwordSalt: row.password_salt,
       passwordHash: row.password_hash,
       profileImageUrl: row.profile_image_url,
       favoriteStorypointIds: favoriteIdsByUser.get(row.id) ?? [],
       role: row.role,
+      isVerified: row.is_verified ?? true,
+      verificationCode: row.verification_code ?? undefined,
+      verificationCodeExpiresAt: row.verification_code_expires_at ? Date.parse(row.verification_code_expires_at) : undefined,
+      verificationCodeSentAt: row.verification_code_sent_at ? Date.parse(row.verification_code_sent_at) : undefined,
+      verificationAttempts: row.verification_attempts ?? 0,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       recoveryCode: row.recovery_code ?? undefined,
@@ -513,25 +536,48 @@ export async function listUserFavorites(user: UserAccount) {
   return (await getStore()).storypoints.filter((storypoint) => user.favoriteStorypointIds.includes(storypoint.id));
 }
 
-export async function createUserAccount(input: { email: string; password: string; name?: string; profileImageUrl?: string; role?: 'user' | 'admin' }) {
+export async function createUserAccount(input: {
+  email: string;
+  password: string;
+  username: string;
+  name?: string;
+  profileImageUrl?: string;
+  role?: 'user' | 'admin';
+}) {
   const store = await getStore();
   const email = normalizeEmail(input.email);
+  const username = normalizeUsername(input.username);
 
+  if (!username) {
+    throw new Error('Username is required');
+  }
   if (store.users.some((user) => normalizeEmail(user.email) === email)) {
     throw new Error('Email already in use');
+  }
+  if (isUsernameTaken(store, username)) {
+    throw new Error('Username already in use');
   }
 
   const password = hashUserPassword(input.password);
   const now = nowIso();
+  const code = String(randomInt(100000, 999999));
+  const verificationCodeExpiresAt = Date.now() + VERIFICATION_CODE_TTL_MS;
+  const verificationCodeSentAt = Date.now();
   const user: UserAccount = {
     id: randomUUID(),
     email,
     name: input.name?.trim() || deriveDisplayName(email),
+    username,
     passwordSalt: password.salt,
     passwordHash: password.hash,
     profileImageUrl: input.profileImageUrl?.trim() || '',
     favoriteStorypointIds: [],
     role: input.role ?? 'user',
+    isVerified: false,
+    verificationCode: code,
+    verificationCodeExpiresAt,
+    verificationCodeSentAt,
+    verificationAttempts: 0,
     createdAt: now,
     updatedAt: now
   };
@@ -542,19 +588,163 @@ export async function createUserAccount(input: { email: string; password: string
   return user;
 }
 
-export async function authenticateUser(email: string, password: string) {
+export async function isUsernameAvailable(username: string) {
+  const value = normalizeUsername(username);
+  if (!value) return false;
+
+  // Prefer a single indexed SQL lookup when a remote DB is configured, to avoid
+  // hydrating the entire store on every debounced keystroke.
+  if (remoteSql) {
+    const rows = await remoteSql`
+      SELECT 1 FROM locally_explained_users
+      WHERE lower(username) = lower(${value})
+      LIMIT 1
+    `;
+    return rows.length === 0;
+  }
+
+  const store = await getStore();
+  return !isUsernameTaken(store, value);
+}
+
+export type GenerateCodeResult =
+  | { ok: true; code: string; email: string; expiresAt: number; sentAt: number }
+  | { ok: false; reason: 'not-found' }
+  | { ok: false; reason: 'rate-limited'; retryAfter: number; sentAt: number; expiresAt: number };
+
+export async function generateVerificationCodeForUser(userId: string): Promise<GenerateCodeResult> {
+  const store = await getStore();
+  const user = findUserById(store, userId);
+  if (!user) return { ok: false, reason: 'not-found' };
+
+  const now = Date.now();
+  if (user.verificationCodeSentAt && now - user.verificationCodeSentAt < RESEND_COOLDOWN_MS) {
+    const retryAfter = RESEND_COOLDOWN_MS - (now - user.verificationCodeSentAt);
+    return {
+      ok: false,
+      reason: 'rate-limited',
+      retryAfter,
+      sentAt: user.verificationCodeSentAt,
+      expiresAt: user.verificationCodeExpiresAt ?? 0
+    };
+  }
+
+  const code = String(randomInt(100000, 999999));
+  const expiresAt = now + VERIFICATION_CODE_TTL_MS;
+  user.verificationCode = code;
+  user.verificationCodeExpiresAt = expiresAt;
+  user.verificationCodeSentAt = now;
+  user.verificationAttempts = 0;
+  user.updatedAt = nowIso();
+  await persistStore(store);
+  return { ok: true, code, email: user.email, expiresAt, sentAt: now };
+}
+
+export type VerifyResult =
+  | { ok: true; user: UserAccount }
+  | { ok: false; reason: 'not-found' | 'expired' | 'too-many-attempts' | 'invalid' };
+
+export async function verifyUserEmail(userId: string, code: string): Promise<VerifyResult> {
+  const store = await getStore();
+  const user = findUserById(store, userId);
+  if (!user) return { ok: false, reason: 'not-found' };
+
+  const now = Date.now();
+  if (!user.verificationCode || !user.verificationCodeExpiresAt || user.verificationCodeExpiresAt < now) {
+    return { ok: false, reason: 'expired' };
+  }
+  if ((user.verificationAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+    return { ok: false, reason: 'too-many-attempts' };
+  }
+
+  if (user.verificationCode !== code.trim()) {
+    user.verificationAttempts = (user.verificationAttempts ?? 0) + 1;
+    // Invalidate the code once the attempt budget is exhausted.
+    if (user.verificationAttempts >= MAX_VERIFY_ATTEMPTS) {
+      delete user.verificationCode;
+      delete user.verificationCodeExpiresAt;
+    }
+    user.updatedAt = nowIso();
+    await persistStore(store);
+    return { ok: false, reason: 'invalid' };
+  }
+
+  user.isVerified = true;
+  delete user.verificationCode;
+  delete user.verificationCodeExpiresAt;
+  delete user.verificationCodeSentAt;
+  delete user.verificationAttempts;
+  user.updatedAt = nowIso();
+  await persistStore(store);
+  return { ok: true, user };
+}
+
+// Combined verify + session creation: verifies the code and mints a session in a
+// single store load + persist, avoiding a second full-store rewrite.
+export async function verifyUserEmailAndCreateSession(userId: string, code: string): Promise<VerifyResult & { token?: string }> {
+  const store = await getFreshStore();
+  const user = findUserById(store, userId);
+  if (!user) return { ok: false, reason: 'not-found' };
+
+  const now = Date.now();
+  if (!user.verificationCode || !user.verificationCodeExpiresAt || user.verificationCodeExpiresAt < now) {
+    return { ok: false, reason: 'expired' };
+  }
+  if ((user.verificationAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+    return { ok: false, reason: 'too-many-attempts' };
+  }
+
+  if (user.verificationCode !== code.trim()) {
+    user.verificationAttempts = (user.verificationAttempts ?? 0) + 1;
+    if (user.verificationAttempts >= MAX_VERIFY_ATTEMPTS) {
+      delete user.verificationCode;
+      delete user.verificationCodeExpiresAt;
+    }
+    user.updatedAt = nowIso();
+    await persistStore(store);
+    return { ok: false, reason: 'invalid' };
+  }
+
+  user.isVerified = true;
+  delete user.verificationCode;
+  delete user.verificationCodeExpiresAt;
+  delete user.verificationCodeSentAt;
+  delete user.verificationAttempts;
+  user.updatedAt = nowIso();
+
+  const token = mintSessionToken();
+  store.sessions.unshift({
+    tokenHash: hashSessionToken(token),
+    userId: user.id,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString()
+  });
+
+  await persistStore(store);
+  return { ok: true, user, token };
+}
+
+export type AuthenticateResult =
+  | { status: 'ok'; user: UserAccount }
+  | { status: 'unverified'; user: UserAccount }
+  | { status: 'invalid' };
+
+export async function authenticateUser(email: string, password: string): Promise<AuthenticateResult> {
   const store = await getStore();
   const user = findUserByEmail(store, email);
 
   if (!user || !verifyUserPassword(password, user.passwordSalt, user.passwordHash)) {
-    return null;
+    return { status: 'invalid' };
+  }
+
+  if (user.isVerified === false) {
+    return { status: 'unverified', user };
   }
 
   if (claimContentForEmail(store, user.email, user.id, user.name)) {
     await persistStore(store);
   }
 
-  return user;
+  return { status: 'ok', user };
 }
 
 export async function updateUserAccount(userId: string, input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }) {
