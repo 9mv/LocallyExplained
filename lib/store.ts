@@ -177,6 +177,10 @@ async function getStore() {
   return storePromise;
 }
 
+async function getFreshStore() {
+  return await loadStore();
+}
+
 async function persistStore(store: Store) {
   storePromise = null;
   if (remoteSql) {
@@ -193,19 +197,15 @@ async function persistStore(store: Store) {
   await writeFile(dbPath, JSON.stringify(store, null, 2));
 }
 
-async function purgeExpiredSessions() {
-  const store = await getStore();
-  const now = Date.now();
-  const before = store.sessions.length;
-  store.sessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > now);
-
-  if (store.sessions.length !== before) {
-    await persistStore(store);
-  }
+function findUserById(store: Store, id: string) {
+  return store.users.find((user) => user.id === id);
 }
 
-async function claimContentForEmail(email: string, userId: string, userName: string) {
-  const store = await getStore();
+function findUserByEmail(store: Store, email: string) {
+  return store.users.find((user) => normalizeEmail(user.email) === normalizeEmail(email));
+}
+
+function claimContentForEmail(store: Store, email: string, userId: string, userName: string) {
   const normalized = normalizeEmail(email);
 
   let changed = false;
@@ -227,8 +227,18 @@ async function claimContentForEmail(email: string, userId: string, userName: str
   });
 
   if (changed) {
-    await persistStore(store);
+    return true;
   }
+
+  return false;
+}
+
+function purgeExpiredSessions(store: Store) {
+  const now = Date.now();
+  const before = store.sessions.length;
+  store.sessions = store.sessions.filter((session) => Date.parse(session.expiresAt) > now);
+
+  return store.sessions.length !== before;
 }
 
 export async function listStorypoints() {
@@ -248,11 +258,11 @@ export async function listUsers() {
 }
 
 export async function getUserById(id: string) {
-  return (await getStore()).users.find((user) => user.id === id);
+  return findUserById(await getStore(), id);
 }
 
 export async function getUserByEmail(email: string) {
-  return (await getStore()).users.find((user) => normalizeEmail(user.email) === normalizeEmail(email));
+  return findUserByEmail(await getStore(), email);
 }
 
 export async function listUserRequests(user: UserAccount) {
@@ -293,19 +303,22 @@ export async function createUserAccount(input: { email: string; password: string
   };
 
   store.users.unshift(user);
-  await claimContentForEmail(email, user.id, user.name);
+  claimContentForEmail(store, email, user.id, user.name);
   await persistStore(store);
   return user;
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const user = await getUserByEmail(email);
+  const store = await getStore();
+  const user = findUserByEmail(store, email);
 
   if (!user || !verifyUserPassword(password, user.passwordSalt, user.passwordHash)) {
     return null;
   }
 
-  await claimContentForEmail(user.email, user.id, user.name);
+  if (claimContentForEmail(store, user.email, user.id, user.name)) {
+    await persistStore(store);
+  }
 
   return user;
 }
@@ -315,7 +328,7 @@ export async function updateUserAccount(
   input: { email?: string; name?: string; profileImageUrl?: string; currentPassword?: string; newPassword?: string }
 ) {
   const store = await getStore();
-  const user = store.users.find((item) => item.id === userId);
+  const user = findUserById(store, userId);
 
   if (!user) {
     return null;
@@ -361,7 +374,7 @@ export async function updateUserAccount(
 
 export async function updateUserPassword(userId: string, recoveryCode: string, expiresAt: number) {
   const store = await getStore();
-  const user = store.users.find((item) => item.id === userId);
+  const user = findUserById(store, userId);
 
   if (!user) {
     return null;
@@ -376,7 +389,7 @@ export async function updateUserPassword(userId: string, recoveryCode: string, e
 
 export async function resetUserPassword(email: string, code: string, newPassword: string) {
   const store = await getStore();
-  const user = await getUserByEmail(email);
+  const user = findUserByEmail(store, email);
 
   if (!user || !user.recoveryCode || !user.recoveryCodeExpiresAt) {
     return null;
@@ -414,11 +427,13 @@ export async function getUserBySessionToken(token: string | undefined | null) {
     return null;
   }
 
-  await purgeExpiredSessions();
-  const store = await getStore();
+  const store = await getFreshStore();
+  if (purgeExpiredSessions(store)) {
+    await persistStore(store);
+  }
   const session = store.sessions.find((item) => item.tokenHash === hashSessionToken(token));
 
-  return session ? (await getUserById(session.userId)) ?? null : null;
+  return session ? findUserById(store, session.userId) ?? null : null;
 }
 
 export async function revokeSession(token: string | undefined | null) {
