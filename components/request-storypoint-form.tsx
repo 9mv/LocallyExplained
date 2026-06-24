@@ -60,6 +60,7 @@ export function RequestStorypointForm({
             }}
           >
             {messages.submitRequest}
+            {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
           </button>
           <button className="ghost-button" type="button" onClick={onCancel}>
             {messages.cancelRequest}

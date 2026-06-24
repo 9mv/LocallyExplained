@@ -28,6 +28,7 @@ export function StoryReader({
   const [playing, setPlaying] = useState(false);
   const [fontSize, setFontSize] = useState(1);
   const [favorite, setFavorite] = useState(isFavorite);
+  const [favoriting, setFavoriting] = useState(false);
   const speechLocale = locale === 'ca' ? 'ca-ES' : locale === 'es' ? 'es-ES' : 'en-US';
 
   useEffect(() => {
@@ -50,14 +51,17 @@ export function StoryReader({
       return;
     }
 
+    setFavoriting(true);
     const response = await fetch(`/api/favorites/${storypoint.id}`, { method: 'POST' });
 
     if (!response.ok) {
+      setFavoriting(false);
       return;
     }
 
     const payload = (await response.json()) as { favoriteStorypointIds: string[] };
     setFavorite(payload.favoriteStorypointIds.includes(storypoint.id));
+    setFavoriting(false);
   };
 
   const toggleSpeech = () => {
@@ -96,8 +100,8 @@ export function StoryReader({
           ) : null}
         </div>
         <div className="popup-controls">
-          <button className={`icon-button ${favorite ? 'favorite-active' : ''}`} type="button" onClick={() => void toggleFavorite()} aria-label={favorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
-            {favorite ? '♥' : '♡'}
+          <button className={`icon-button ${favorite ? 'favorite-active' : ''}`} type="button" onClick={() => void toggleFavorite()} disabled={favoriting} aria-label={favorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
+            {favoriting ? <span className="spinner" /> : (favorite ? '♥' : '♡')}
           </button>
           <button
             className="close-button"

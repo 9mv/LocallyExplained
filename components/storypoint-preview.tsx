@@ -10,7 +10,8 @@ export function StorypointPreview({
   isFavorite,
   onToggleFavorite,
   onPlay,
-  onClose
+  onClose,
+  isFavoriting
   }: {
   storypoint: Storypoint;
   title: string;
@@ -19,6 +20,7 @@ export function StorypointPreview({
   onToggleFavorite: () => void;
   onPlay: () => void;
   onClose: () => void;
+  isFavoriting?: boolean;
 }) {
   const messages = getMessages(locale);
   const submitterHref = storypoint.submittedByUserId ? `/${locale}/users/${storypoint.submittedByUserId}` : null;
@@ -44,8 +46,8 @@ export function StorypointPreview({
           ) : null}
         </div>
         <div className="popup-controls">
-          <button className={`icon-button ${isFavorite ? 'favorite-active' : ''}`} type="button" onClick={onToggleFavorite} aria-label={isFavorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
-            {isFavorite ? '♥' : '♡'}
+          <button className={`icon-button ${isFavorite ? 'favorite-active' : ''}`} type="button" onClick={onToggleFavorite} disabled={isFavoriting} aria-label={isFavorite ? messages.unfavoriteStorypoint : messages.favoriteStorypoint}>
+            {isFavoriting ? <span className="spinner" /> : (isFavorite ? '♥' : '♡')}
           </button>
           <button className="close-button" type="button" onClick={onClose} aria-label="Close">
             <CloseIcon />

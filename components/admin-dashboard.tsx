@@ -8,6 +8,7 @@ import { getMessages } from '@/lib/i18n';
 export function AdminDashboard({ locale, requests, storypoints }: { locale: Locale; requests: StorypointRequest[]; storypoints: Storypoint[] }) {
   const messages = getMessages(locale);
   const pendingRequests = requests.filter((request) => request.status === 'pending');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   return (
     <div className="stack">
@@ -55,15 +56,18 @@ export function AdminDashboard({ locale, requests, storypoints }: { locale: Loca
               <button
                 className="ghost-button"
                 type="button"
+                disabled={deletingId === storypoint.id}
                 onClick={async () => {
                   if (!window.confirm(messages.deleteStorypoint)) {
                     return;
                   }
 
+                  setDeletingId(storypoint.id);
                   await fetch(`/api/admin/storypoints/${storypoint.id}`, { method: 'DELETE' });
                   window.location.reload();
                 }}
               >
+                {deletingId === storypoint.id ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
                 {messages.delete}
               </button>
             </div>
@@ -94,6 +98,7 @@ function RequestActions({ request, messages }: { request: StorypointRequest; mes
         }}
       >
         {messages.approve}
+        {sending ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
       </button>
       <button
         className="ghost-button"
@@ -110,6 +115,7 @@ function RequestActions({ request, messages }: { request: StorypointRequest; mes
         }}
       >
         {messages.reject}
+        {sending ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
       </button>
     </div>
   );

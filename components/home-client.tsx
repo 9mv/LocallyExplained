@@ -19,6 +19,8 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
   const [locationError, setLocationError] = useState<string | null>(null);
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [favoriteStorypointIds, setFavoriteStorypointIds] = useState<string[]>(currentUser?.favoriteStorypointIds ?? []);
+  const [locating, setLocating] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
 
   const selectedStorypoint = useMemo(
     () => storypoints.find((storypoint) => storypoint.id === selectedStorypointId) ?? null,
@@ -47,6 +49,7 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
       return;
     }
 
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const nextLocation = {
@@ -55,8 +58,12 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
         };
         window.localStorage.setItem('locally-explained-location', JSON.stringify(nextLocation));
         setUserLocation(nextLocation);
+        setLocating(false);
       },
-      () => setLocationError(messages.locationDenied),
+      () => {
+        setLocationError(messages.locationDenied);
+        setLocating(false);
+      },
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 8_000 }
     );
   };
@@ -96,15 +103,18 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
       return;
     }
 
+    setFavoriting(true);
     const response = await fetch(`/api/favorites/${storypointId}`, { method: 'POST' });
 
     if (!response.ok) {
       setRequestStatus(messages.signInRequired);
+      setFavoriting(false);
       return;
     }
 
     const payload = (await response.json()) as { favoriteStorypointIds: string[] };
     setFavoriteStorypointIds(payload.favoriteStorypointIds);
+    setFavoriting(false);
   };
 
   return (
@@ -156,7 +166,8 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
           pendingPoint={pickedPoint}
         />
         {!requestMode && (
-          <button className="map-location-button" type="button" onClick={handleUseLocation}>
+          <button className="map-location-button" type="button" onClick={handleUseLocation} disabled={locating}>
+            {locating ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
             {messages.useLocation}
           </button>
         )}
@@ -167,7 +178,8 @@ export function HomeClient({ locale, storypoints, currentUser }: { locale: Local
             title={getLocaleStorypoint(selectedStorypoint, locale).title}
             locale={locale}
             isFavorite={favoriteStorypointSet.has(selectedStorypoint.id)}
-            onToggleFavorite={() => void toggleFavorite(selectedStorypoint.id)}
+            isFavoriting={favoriting}
+            onToggleFavorite={() => { if (!favoriting) void toggleFavorite(selectedStorypoint.id); }}
             onPlay={() => window.location.assign(`/${locale}/storypoints/${selectedStorypoint.id}`)}
             onClose={() => setSelectedStorypointId(null)}
           />

@@ -36,6 +36,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<'request' | 'favorite' | 'storypoint' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const profileRequests = useMemo(() => requests.filter((request) => request.status === 'pending'), [requests]);
   const profileStorypoints = useMemo(() => storypoints, [storypoints]);
@@ -128,6 +129,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 }}
               >
                 {messages.signIn}
+                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
               <button
                 className="ghost-button"
@@ -192,6 +194,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 }}
               >
                 {messages.register}
+                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
             </div>
           ) : (
@@ -246,6 +249,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 }}
               >
                 {messages.resetPassword}
+                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
               <button
                 className="ghost-button"
@@ -268,6 +272,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                 }}
               >
                 {messages.sendRecoveryCode}
+                {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
             </div>
           )}
@@ -291,16 +296,19 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               <p>{currentUser.email}</p>
             </div>
           </div>
-          <button
-            className="ghost-button"
-            type="button"
-            onClick={async () => {
-              await fetch('/api/logout', { method: 'POST' });
-              router.refresh();
-            }}
-          >
-            {messages.signOut}
-          </button>
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={async () => {
+                setLoggingOut(true);
+                await fetch('/api/logout', { method: 'POST' });
+                router.refresh();
+              }}
+              disabled={loggingOut}
+            >
+              {loggingOut ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
+              {messages.signOut}
+            </button>
         </div>
 
         <div className="stack">
@@ -364,6 +372,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             }}
           >
             {messages.saveAccount}
+            {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
           </button>
         </div>
       </section>
@@ -387,7 +396,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                       setDeleteId(request.id);
                     }}
                   >
-                    <CloseIcon />
+                    {deleting === request.id ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
                 <p>{request.body}</p>
@@ -416,7 +425,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                       setDeleteId(storypoint.id);
                     }}
                   >
-                    <CloseIcon />
+                    {deleting === storypoint.id ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
               </div>
@@ -444,7 +453,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                       setDeleteId(storypoint.id);
                     }}
                   >
-                    <CloseIcon />
+                    {deleting === storypoint.id ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
               </div>
@@ -459,6 +468,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
         message={messages.deleteConfirm}
         confirmLabel={messages.delete}
         cancelLabel={messages.close}
+        confirmDisabled={!!deleting}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
       />

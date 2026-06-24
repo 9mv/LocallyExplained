@@ -10,9 +10,10 @@ type Props = {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmDisabled?: boolean;
 };
 
-export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, confirmDisabled }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +42,8 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
           <button className="ghost-button" type="button" onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button className="primary-button" type="button" onClick={onConfirm}>
+          <button className="primary-button" type="button" onClick={onConfirm} disabled={confirmDisabled}>
+            {confirmDisabled ? <span className="spinner" style={{ marginRight: 8 }} /> : null}
             {confirmLabel}
           </button>
         </div>

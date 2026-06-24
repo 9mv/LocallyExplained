@@ -80,6 +80,7 @@ export function AdminUsersPanel({ locale, users }: { locale: Locale; users: Admi
                 }}
               >
                 Delete
+                {deletingId === u.id ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
             </div>
           </article>
