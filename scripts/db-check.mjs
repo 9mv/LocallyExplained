@@ -10,16 +10,15 @@ if (!dbUrl) {
 const sql = neon(dbUrl);
 
 async function main() {
-  const rows = await sql`SELECT data FROM locally_explained_state WHERE id = 1`;
-  if (!rows.length) {
-    console.log('No state row found.');
-    process.exit(0);
-  }
+  const [users, storypoints, requests] = await Promise.all([
+    sql`SELECT id, email, name, role, created_at, updated_at FROM locally_explained_users ORDER BY created_at DESC`,
+    sql`SELECT id, slug, location_name, original_locale, created_at, updated_at FROM locally_explained_storypoints ORDER BY created_at DESC`,
+    sql`SELECT id, title, email, status, created_at, reviewed_at FROM locally_explained_storypoint_requests ORDER BY created_at DESC`
+  ]);
 
-  const store = rows[0].data;
-  console.log('users=', JSON.stringify(store.users, null, 2));
-  console.log('requests=', JSON.stringify(store.requests, null, 2));
-  console.log('storypoints=', JSON.stringify(store.storypoints, null, 2));
+  console.log('users=', JSON.stringify(users, null, 2));
+  console.log('requests=', JSON.stringify(requests, null, 2));
+  console.log('storypoints=', JSON.stringify(storypoints, null, 2));
 }
 
 main().catch((error) => {
