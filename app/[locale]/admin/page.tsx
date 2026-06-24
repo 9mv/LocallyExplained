@@ -7,6 +7,8 @@ import { AccountCenter } from '@/components/account-center';
 import { getCurrentUser } from '@/lib/session';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
 

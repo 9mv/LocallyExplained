@@ -5,6 +5,8 @@ import { getMessages, isLocale } from '@/lib/i18n';
 import { getUserById, listUserStorypoints } from '@/lib/store';
 import { getCurrentUser } from '@/lib/session';
 
+export const dynamic = 'force-dynamic';
+
 export default async function UserProfilePage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
 

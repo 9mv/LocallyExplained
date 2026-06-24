@@ -3,6 +3,8 @@ import { getMessages, isLocale } from '@/lib/i18n';
 import { getCurrentUser } from '@/lib/session';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function WhoWeArePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
 

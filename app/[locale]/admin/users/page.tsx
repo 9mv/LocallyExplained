@@ -5,6 +5,8 @@ import { listUsers } from '@/lib/store';
 import { getCurrentUser } from '@/lib/session';
 import { AdminUsersPanel } from '@/components/admin-users-panel';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminUsersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
 

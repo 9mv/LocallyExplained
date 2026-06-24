@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { getMessages } from '@/lib/i18n';
 import { Locale, UserAccount } from '@/lib/types';
@@ -11,6 +12,7 @@ const mobileBreakpoint = '(max-width: 760px)';
 
 export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUser: UserAccount | null }) {
   const messages = getMessages(locale);
+  const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [isAtTop, setIsAtTop] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,7 +66,7 @@ export function SiteHeader({ locale, currentUser }: { locale: Locale; currentUse
 
     try {
       await fetch('/api/logout', { method: 'POST' });
-      window.location.reload();
+      router.refresh();
     } finally {
       setLoggingOutTarget(null);
     }
