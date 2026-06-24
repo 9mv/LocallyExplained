@@ -43,15 +43,6 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const profileRequests = useMemo(() => requests.filter((request) => request.status === 'pending'), [requests]);
   const profileStorypoints = useMemo(() => storypoints, [storypoints]);
 
-  const redirectAfterAuth = () => {
-    if (returnTo && returnTo !== `/${locale}/account`) {
-      router.push(returnTo);
-      return true;
-    }
-
-    return false;
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deleteId || !deleteTarget) return;
 
@@ -116,8 +107,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     return;
                   }
 
-                  router.refresh();
-                  redirectAfterAuth();
+                  if (returnTo && returnTo !== `/${locale}/account`) {
+                    window.location.href = returnTo;
+                  } else {
+                    window.location.reload();
+                  }
                 } finally {
                   setSaving(false);
                 }
@@ -182,8 +176,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     return;
                   }
 
-                  router.refresh();
-                  redirectAfterAuth();
+                  if (returnTo && returnTo !== `/${locale}/account`) {
+                    window.location.href = returnTo;
+                  } else {
+                    window.location.reload();
+                  }
                 } finally {
                   setSaving(false);
                 }
@@ -325,7 +322,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
                   try {
                     await fetch('/api/logout', { method: 'POST' });
-                    router.refresh();
+                    window.location.reload();
                   } finally {
                     setLoggingOut(false);
                   }
