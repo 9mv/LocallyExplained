@@ -398,7 +398,6 @@ export async function resetUserPassword(email: string, code: string, newPassword
 }
 
 export async function createSession(userId: string) {
-  console.log('[session] createSession', { userId });
   const store = await getStore();
   const token = mintSessionToken();
   store.sessions.unshift({
@@ -412,14 +411,12 @@ export async function createSession(userId: string) {
 
 export async function getUserBySessionToken(token: string | undefined | null) {
   if (!token) {
-    console.log('[session] getUserBySessionToken: no token');
     return null;
   }
 
   await purgeExpiredSessions();
   const store = await getStore();
   const session = store.sessions.find((item) => item.tokenHash === hashSessionToken(token));
-  console.log('[session] getUserBySessionToken', { found: !!session, tokenPrefix: token.slice(0, 8), sessionsCount: store.sessions.length });
 
   return session ? (await getUserById(session.userId)) ?? null : null;
 }
@@ -429,7 +426,6 @@ export async function revokeSession(token: string | undefined | null) {
     return;
   }
 
-  console.log('[session] revokeSession', { tokenPrefix: token.slice(0, 8) });
   const store = await getStore();
   const tokenHash = hashSessionToken(token);
   const before = store.sessions.length;
