@@ -19,6 +19,7 @@ type Props = {
 export function AccountCenter({ locale, currentUser, requests, favorites, storypoints, returnTo }: Props) {
   const messages = getMessages(locale);
   const router = useRouter();
+  const getDeleteKey = (target: 'request' | 'favorite' | 'storypoint', id: string) => `${target}:${id}`;
   const [mode, setMode] = useState<'login' | 'register' | 'recover'>(currentUser ? 'login' : 'login');
   const [email, setEmail] = useState(currentUser?.email ?? '');
   const [name, setName] = useState(currentUser?.name ?? '');
@@ -53,7 +54,8 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
   const handleDeleteConfirm = async () => {
     if (!deleteId || !deleteTarget) return;
 
-    setDeleting(deleteId);
+    const deletingKey = getDeleteKey(deleteTarget, deleteId);
+    setDeleting(deletingKey);
     setDeleteTarget(null);
 
     try {
@@ -74,6 +76,8 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
     setDeleteTarget(null);
     setDeleteId(null);
   };
+
+  const isDeletingItem = (target: 'request' | 'favorite' | 'storypoint', id: string) => deleting === getDeleteKey(target, id);
 
   if (!currentUser) {
     return (
@@ -149,7 +153,41 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               </button>
             </form>
           ) : mode === 'register' ? (
-            <div className="stack">
+            <form
+              className="stack"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (saving) return;
+
+                if (password !== confirmPassword) {
+                  setMessage(messages.confirmPassword);
+                  setIsError(true);
+                  return;
+                }
+
+                setSaving(true);
+                setMessage(null);
+                setIsError(false);
+                try {
+                  const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, confirmPassword })
+                  });
+
+                  if (!response.ok) {
+                    setMessage(response.status === 409 ? messages.emailAlreadyInUse : messages.invalidCredentials);
+                    setIsError(true);
+                    return;
+                  }
+
+                  router.refresh();
+                  redirectAfterAuth();
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
               <h2>{messages.register}</h2>
               <label className="field">
                 <span>{messages.requestFormEmail}</span>
@@ -166,42 +204,13 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
                 className="primary-button"
-                type="button"
+                type="submit"
                 disabled={saving}
-                onClick={async () => {
-                  if (password !== confirmPassword) {
-                    setMessage(messages.confirmPassword);
-                    setIsError(true);
-                    return;
-                  }
-
-                  setSaving(true);
-                  setMessage(null);
-                  setIsError(false);
-                  try {
-                    const response = await fetch('/api/register', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ email, password, confirmPassword })
-                    });
-
-                    if (!response.ok) {
-                      setMessage(response.status === 409 ? messages.emailAlreadyInUse : messages.invalidCredentials);
-                      setIsError(true);
-                      return;
-                    }
-
-                    router.refresh();
-                    redirectAfterAuth();
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
               >
                 {messages.register}
                 {saving ? <span className="spinner" style={{ marginLeft: 8 }} /> : null}
               </button>
-            </div>
+            </form>
           ) : (
             <div className="stack">
               <h2>{messages.recoverPassword}</h2>
@@ -402,13 +411,13 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     className="ghost-button icon-button delete-button"
                     type="button"
                     aria-label={messages.deleteRequest}
-                    disabled={deleting === request.id}
+                    disabled={isDeletingItem('request', request.id)}
                     onClick={() => {
                       setDeleteTarget('request');
                       setDeleteId(request.id);
                     }}
                   >
-                    {deleting === request.id ? <span className="spinner" /> : <CloseIcon />}
+                    {isDeletingItem('request', request.id) ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
                 <p>{request.body}</p>
@@ -431,13 +440,13 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     className="ghost-button icon-button delete-button"
                     type="button"
                     aria-label={messages.deleteFavorite}
-                    disabled={deleting === storypoint.id}
+                    disabled={isDeletingItem('favorite', storypoint.id)}
                     onClick={() => {
                       setDeleteTarget('favorite');
                       setDeleteId(storypoint.id);
                     }}
                   >
-                    {deleting === storypoint.id ? <span className="spinner" /> : <CloseIcon />}
+                    {isDeletingItem('favorite', storypoint.id) ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
               </div>
@@ -459,13 +468,13 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
                     className="ghost-button icon-button delete-button"
                     type="button"
                     aria-label={messages.deleteStorypointItem}
-                    disabled={deleting === storypoint.id}
+                    disabled={isDeletingItem('storypoint', storypoint.id)}
                     onClick={() => {
                       setDeleteTarget('storypoint');
                       setDeleteId(storypoint.id);
                     }}
                   >
-                    {deleting === storypoint.id ? <span className="spinner" /> : <CloseIcon />}
+                    {isDeletingItem('storypoint', storypoint.id) ? <span className="spinner" /> : <CloseIcon />}
                   </button>
                 </div>
               </div>
