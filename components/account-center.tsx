@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMessages } from '@/lib/i18n';
 import { Locale, Storypoint, StorypointRequest, UserAccount } from '@/lib/types';
@@ -71,6 +71,9 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
   const isDeletingItem = (target: 'request' | 'favorite' | 'storypoint', id: string) => deleting === getDeleteKey(target, id);
 
+  const loginFormRef = useRef<HTMLFormElement>(null);
+  const registerFormRef = useRef<HTMLFormElement>(null);
+
   if (!currentUser) {
     return (
       <section className="panel auth-panel">
@@ -86,6 +89,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
 
           {mode === 'login' ? (
             <form
+              ref={loginFormRef}
               className="stack"
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -121,11 +125,11 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               <h2>{messages.signIn}</h2>
               <label className="field">
                 <span>{messages.requestFormEmail}</span>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); loginFormRef.current?.requestSubmit(); } }} />
               </label>
               <label className="field">
                 <span>{messages.password}</span>
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); loginFormRef.current?.requestSubmit(); } }} />
               </label>
               {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
@@ -150,6 +154,7 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
             </form>
           ) : mode === 'register' ? (
             <form
+              ref={registerFormRef}
               className="stack"
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -191,15 +196,15 @@ export function AccountCenter({ locale, currentUser, requests, favorites, storyp
               <h2>{messages.register}</h2>
               <label className="field">
                 <span>{messages.requestFormEmail}</span>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); registerFormRef.current?.requestSubmit(); } }} />
               </label>
               <label className="field">
                 <span>{messages.password}</span>
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); registerFormRef.current?.requestSubmit(); } }} />
               </label>
               <label className="field">
                 <span>{messages.confirmPassword}</span>
-                <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); registerFormRef.current?.requestSubmit(); } }} />
               </label>
               {message ? <div className={`notice ${isError ? 'notice-error' : ''}`}>{message}</div> : null}
               <button
